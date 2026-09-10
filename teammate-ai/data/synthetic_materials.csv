@@ -1,0 +1,25 @@
+material_id,cpse,legacy_code,original_description,unit,category_hint
+1,NTPC,NTPC-4657,HEX BOLT M16 X 50 MM SS304,NOS,Fasteners > Bolts
+2,BHEL,BHEL-3286,Hexagonal Bolt M16*50 Stainless Steel 304,NOS,Fasteners > Bolts
+3,IOC,IOC-2679,SS 304 HEX HEAD BOLT M16 X 50,NOS,Fasteners > Bolts
+4,SAIL,SAIL-9935,HEX HEAD BOLT M16 50MM SS304,NOS,Fasteners > Bolts
+5,NM,NM-2424,Bolt Hex Head M16x50mm SS-304,NOS,Fasteners > Bolts
+6,BHEL,BHEL-1488,HEX BOLT M16 X 50 MM MS,NOS,Fasteners > Bolts
+7,NM,NM-2535,Hexagonal Bolt M16*50 Mild Steel,NOS,Fasteners > Bolts
+8,NTPC,NTPC-4582,MS HEX HEAD BOLT M16 X 50,NOS,Fasteners > Bolts
+9,SAIL,SAIL-9928,HEX NUT M16 SS304,NOS,Fasteners > Nuts
+10,NTPC,NTPC-7873,Hexagonal Nut M16 Stainless Steel 304,NOS,Fasteners > Nuts
+11,IOC,IOC-4611,SS 304 HEX NUT M16,NOS,Fasteners > Nuts
+12,NM,NM-8359,Nut Hex M16 SS-304,NOS,Fasteners > Nuts
+13,BHEL,BHEL-3615,FLAT WASHER M16 SS304,NOS,Fasteners > Washers
+14,IOC,IOC-7924,Washer Flat M16 Stainless Steel 304,NOS,Fasteners > Washers
+15,NTPC,NTPC-6574,SS304 FLAT WASHER M16,NOS,Fasteners > Washers
+16,IOC,IOC-6514,HEX BOLT M20 X 75 MM SS304,NOS,Fasteners > Bolts
+17,SAIL,SAIL-2674,Hexagonal Bolt M20*75 Stainless Steel 304,NOS,Fasteners > Bolts
+18,NTPC,NTPC-2519,SS 304 HEX HEAD BOLT M20 X 75,NOS,Fasteners > Bolts
+19,NM,NM-6635,CARRIAGE BOLT M16 X 50 MM SS304,NOS,Fasteners > Bolts
+20,NTPC,NTPC-5333,Carriage Bolt M16*50 Stainless Steel 304,NOS,Fasteners > Bolts
+21,SAIL,SAIL-1711,SS 304 CARRIAGE BOLT M16 X 50,NOS,Fasteners > Bolts
+22,NM,NM-2291,HEX BOLT M12 X 40 MM SS316,NOS,Fasteners > Bolts
+23,NTPC,NTPC-5803,Hexagonal Bolt M12*40 Stainless Steel 316,NOS,Fasteners > Bolts
+24,SAIL,SAIL-6925,SS 316 HEX HEAD BOLT M12 X 40,NOS,Fasteners > Bolts

@@ -1,0 +1,15 @@
+# AI Material Matching — SIH National Material Master MVP
+# Install with: pip install -r requirements.txt
+
+sentence-transformers==2.7.0
+faiss-cpu==1.8.0.post1
+rapidfuzz==3.13.0
+scikit-learn==1.5.2
+pandas==2.2.3
+openpyxl==3.1.5
+numpy==1.26.4
+
+# Optional — only needed if you also expose this as an API endpoint
+fastapi==0.115.12
+uvicorn==0.34.2
+pytest==8.3.5
