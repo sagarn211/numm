@@ -1,18 +1,39 @@
-import React, { useEffect, useState } from 'react';
-import { Globe2, Search, CheckCircle2, Network, ShieldCheck, FileText, ExternalLink, Plus } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Globe2, Search, CheckCircle2, Network, Plus, Trash2 } from 'lucide-react';
 import { nationalMaterialApi } from '../services/nationalMaterialApi';
+import { materialApi } from '../services/materialApi';
 import { Modal } from '../components/common/Modal';
 import { Button } from '../components/common/Button';
 import { Loading } from '../components/common/Loading';
 import { EmptyState } from '../components/common/EmptyState';
-import { getCPSEBadgeColor, formatConfidence } from '../utils/formatters';
+import { getCPSEBadgeColor } from '../utils/formatters';
+import { useAuth } from '../hooks/useAuth';
+import { hasPermission } from '../utils/permissions';
+import { MappingHistory } from '../components/materials/MappingHistory';
+import { useNavigate } from 'react-router-dom';
 
 export const NationalMaterials = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const canWrite = hasPermission(user, 'national.write');
   const [materials, setMaterials] = useState([]);
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('MOST_MAPPINGS');
   const [loading, setLoading] = useState(true);
   const [selectedNational, setSelectedNational] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [error, setError] = useState('');
+  const [sourceMaterials, setSourceMaterials] = useState([]);
+  const [mappingMaterialId, setMappingMaterialId] = useState('');
+  const [mappingBusy, setMappingBusy] = useState(false);
+
+  const sortedMaterials = useMemo(() => [...materials].sort((left, right) => {
+    if (sortBy === 'CODE') return left.nationalCode.localeCompare(right.nationalCode);
+    if (sortBy === 'NEWEST') return right.id - left.id;
+    const mappingDifference = (right.mappedCPSEs?.length || 0) - (left.mappedCPSEs?.length || 0);
+    return mappingDifference || left.nationalCode.localeCompare(right.nationalCode);
+  }), [materials, sortBy]);
 
   const [newCode, setNewCode] = useState({
     description: '',
@@ -21,7 +42,7 @@ export const NationalMaterials = () => {
     specifications: ''
   });
 
-  const loadNationalData = async () => {
+  const loadNationalData = useCallback(async () => {
     setLoading(true);
     try {
       const res = await nationalMaterialApi.getNationalMaterials({ search });
@@ -31,11 +52,11 @@ export const NationalMaterials = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [search]);
 
   useEffect(() => {
     loadNationalData();
-  }, [search]);
+  }, [loadNationalData]);
 
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
@@ -43,6 +64,66 @@ export const NationalMaterials = () => {
     setIsAddModalOpen(false);
     setNewCode({ description: '', category: 'Valves & Actuators', unit: 'NOS', specifications: '' });
     loadNationalData();
+  };
+
+  const handleDelete = async (nat) => {
+    if (!window.confirm(`Delete ${nat.nationalCode}? This cannot be undone.`)) return;
+    setDeletingId(nat.id);
+    setError('');
+    try {
+      await nationalMaterialApi.deleteNationalMaterial(nat.id);
+      if (selectedNational?.id === nat.id) setSelectedNational(null);
+      await loadNationalData();
+    } catch (err) {
+      setError(err?.response?.data?.detail || err.message || 'Unable to delete the National Material.');
+    } finally { setDeletingId(null); }
+  };
+
+  const refreshSelected = async nationalId => {
+    const res = await nationalMaterialApi.getNationalMaterials({ search });
+    setMaterials(res.data);
+    setSelectedNational(res.data.find(item => item.id === nationalId) || null);
+  };
+
+  const openMappingReview = async nat => {
+    setSelectedNational(nat);
+    setMappingMaterialId('');
+    setError('');
+    try {
+      const response = await materialApi.getMaterials();
+      setSourceMaterials(response.data || []);
+    } catch (err) {
+      setError(err?.response?.data?.detail || err.message || 'Unable to load source materials.');
+    }
+  };
+
+  const handleAddMapping = async () => {
+    if (!selectedNational || !mappingMaterialId) return;
+    setMappingBusy(true);
+    setError('');
+    try {
+      await nationalMaterialApi.addMapping(selectedNational.id, Number(mappingMaterialId));
+      setMappingMaterialId('');
+      await refreshSelected(selectedNational.id);
+    } catch (err) {
+      setError(err?.response?.data?.detail || err.message || 'Unable to add the material mapping.');
+    } finally {
+      setMappingBusy(false);
+    }
+  };
+
+  const handleRemoveMapping = async materialId => {
+    if (!selectedNational || !window.confirm('Remove this source material from the National Code?')) return;
+    setMappingBusy(true);
+    setError('');
+    try {
+      await nationalMaterialApi.removeMapping(selectedNational.id, materialId);
+      await refreshSelected(selectedNational.id);
+    } catch (err) {
+      setError(err?.response?.data?.detail || err.message || 'Unable to remove the material mapping.');
+    } finally {
+      setMappingBusy(false);
+    }
   };
 
   return (
@@ -55,6 +136,16 @@ export const NationalMaterials = () => {
           <p className="text-xs text-slate-500 mt-0.5">Official unified material codes mapped across Indian CPSE enterprises</p>
         </div>
         <div className="flex items-center gap-3">
+          <select
+            aria-label="Sort national material duplicate groups"
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value)}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+          >
+            <option value="MOST_MAPPINGS">Most duplicate sources</option>
+            <option value="NEWEST">Newest national codes</option>
+            <option value="CODE">National code A-Z</option>
+          </select>
           <div className="w-full md:w-64">
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -67,11 +158,15 @@ export const NationalMaterials = () => {
               />
             </div>
           </div>
-          <Button variant="primary" size="sm" icon={Plus} onClick={() => setIsAddModalOpen(true)}>
-            Create National Code
-          </Button>
+          {canWrite && (
+            <Button variant="primary" size="sm" icon={Plus} onClick={() => setIsAddModalOpen(true)}>
+              Create National Code
+            </Button>
+          )}
         </div>
       </div>
+
+      {error && <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{error}</div>}
 
       {/* Grid of Large National Material Cards */}
       {loading ? (
@@ -84,7 +179,7 @@ export const NationalMaterials = () => {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {materials.map((nat) => (
+          {sortedMaterials.map((nat) => (
             <div
               key={nat.id}
               className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between"
@@ -101,7 +196,7 @@ export const NationalMaterials = () => {
                     </span>
                   </div>
                   <span className="text-xs font-mono font-bold text-slate-500">
-                    AI Confidence: <strong className="text-emerald-600">{formatConfidence(nat.aiConfidence)}</strong>
+                    Sources: <strong className="text-cyan-700">{nat.mappedCPSEs?.length || 0}</strong>
                   </span>
                 </div>
 
@@ -135,14 +230,18 @@ export const NationalMaterials = () => {
               {/* Bottom Action Trigger */}
               <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
                 <span className="text-slate-400">Created: {nat.createdDate}</span>
+                <div className="flex items-center gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => navigate(`/national-materials/${nat.id}`)}>Material 360</Button>
+                  {canWrite && <Button variant="danger" size="sm" icon={Trash2} loading={deletingId === nat.id} onClick={() => handleDelete(nat)}>Delete</Button>}
                 <Button
                   variant="secondary"
                   size="sm"
                   icon={Network}
-                  onClick={() => setSelectedNational(nat)}
+                  onClick={() => openMappingReview(nat)}
                 >
                   View Mapping Network →
                 </Button>
+                </div>
               </div>
 
             </div>
@@ -186,31 +285,28 @@ export const NationalMaterials = () => {
                       <div>
                         <div className="font-mono font-bold text-blue-600">{m.originalCode}</div>
                         <div className="text-slate-600 text-[11px]">{m.description}</div>
+                        {hasPermission(user, 'audit.read') && <MappingHistory key={m.materialId} materialId={m.materialId} canRestore={canWrite} onRestored={() => refreshSelected(selectedNational.id)} />}
                       </div>
                     </div>
-                    <span className="text-[10px] text-slate-400 font-mono">Mapped: {m.mappedDate}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-400 font-mono">Mapped: {m.mappedDate}</span>
+                      {canWrite && <Button variant="danger" size="sm" icon={Trash2} loading={mappingBusy} onClick={() => handleRemoveMapping(m.materialId)}>Remove</Button>}
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Governance History */}
-            <div>
-              <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[11px] mb-2">
-                Approval & Audit Governance Log
-              </h4>
-              <div className="space-y-1.5">
-                {selectedNational.approvalHistory?.map((h, idx) => (
-                  <div key={idx} className="p-2.5 bg-emerald-50/60 border border-emerald-200 rounded-lg text-emerald-900 font-medium">
-                    <div className="flex items-center justify-between font-bold text-[11px]">
-                      <span>{h.officer}</span>
-                      <span className="font-mono">{h.date}</span>
-                    </div>
-                    <p className="text-[11px] text-emerald-800 mt-1">{h.comment}</p>
-                  </div>
-                ))}
+            {canWrite && <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+              <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-blue-900">Add source material mapping</h4>
+              <div className="flex gap-2">
+                <select className="min-w-0 flex-1 rounded-lg border border-blue-200 bg-white px-3 py-2" value={mappingMaterialId} onChange={event => setMappingMaterialId(event.target.value)}>
+                  <option value="">Select a source material</option>
+                  {sourceMaterials.filter(material => !(selectedNational.mappedCPSEs || []).some(mapping => mapping.materialId === material.id)).map(material => <option key={material.id} value={material.id}>{material.code} — {material.description}</option>)}
+                </select>
+                <Button variant="primary" size="sm" icon={Plus} loading={mappingBusy} disabled={!mappingMaterialId} onClick={handleAddMapping}>Add Mapping</Button>
               </div>
-            </div>
+            </div>}
 
           </div>
         )}

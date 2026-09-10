@@ -1,85 +1,164 @@
-from fastapi import APIRouter
-from fastapi import Depends
-from fastapi import HTTPException
-
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
-
 from app.config.database import get_db
-
-from app.services.approval_service import (
-    approve_match,
-    reject_match
-)
-
-
-router = APIRouter(
-    prefix="/api/approvals",
-    tags=["Approvals"]
-)
-
-
-from app.models.material_match import MaterialMatch
+from app.models.cpse import CPSE
 from app.models.material import Material
-from app.models.audit_log import AuditLog
+from app.models.material_match import MaterialMatch
+from app.schemas.approval import ApprovalRequest
+from app.services.approval_service import approve_match, reject_match
+from app.utils.pagination import paginate
+from app.models.user import User
+from app.utils.rbac import require_permission
+from app.services.conflict_resolution_service import propose_canonical
+
+router = APIRouter(prefix="/api/approvals", tags=["Approvals"])
 
 @router.get("")
-def get_approvals(db: Session = Depends(get_db)):
-    matches = db.query(MaterialMatch).all()
-    results = []
-    for m in matches:
-        mat_a = db.query(Material).get(m.material_a_id)
-        mat_b = db.query(Material).get(m.material_b_id)
-        if mat_a and mat_b:
-            cpse_a = "ONGC" if mat_a.cpse_id == 1 else "NTPC" if mat_a.cpse_id == 2 else "SAIL" if mat_a.cpse_id == 3 else "BHEL" if mat_a.cpse_id == 4 else "CIL"
-            cpse_b = "ONGC" if mat_b.cpse_id == 1 else "NTPC" if mat_b.cpse_id == 2 else "SAIL" if mat_b.cpse_id == 3 else "BHEL" if mat_b.cpse_id == 4 else "CIL"
-            
-            results.append({
-                "id": f"app-{m.id}",
-                "matchId": m.id,
-                "materialGroup": mat_a.description,
-                "category": mat_a.category,
-                "cpses": [cpse_a, cpse_b],
-                "originalCodes": [mat_a.material_code, mat_b.material_code],
-                "aiConfidence": m.final_score,
-                "recommendation": f"Recommend Merge into National Code NM-VAL-001",
-                "submittedDate": "Today, 09:30 AM",
-                "status": "APPROVED" if m.status == "approved" else "REJECTED" if m.status == "rejected" else "PENDING",
-                "evidence": [
-                    f"Description similarity {m.semantic_score}%",
-                    f"Specification similarity {m.attribute_score}%",
-                    f"Category match ({mat_a.category})",
-                    f"UOM compatibility 100% ({mat_a.unit})"
-                ]
-            })
-    return results
+def list_approvals(
+    status: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("approval.read")),
+):
+    q = db.query(MaterialMatch)
+    if status:
+        q = q.filter(MaterialMatch.status == status.upper())
+    return q.order_by(MaterialMatch.final_score.desc()).all()
+
+@router.get("/paginated")
+def list_approvals_paginated(
+    status: str = "PENDING",
+    classification: str | None = Query(None),
+    sort_by: str = Query("CONFIDENCE_DESC"),
+    page: int = Query(1, ge=1),
+    limit: int = Query(25, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("approval.read")),
+):
+    status_key = status.upper()
+    if status_key not in {"PENDING", "APPROVED", "REJECTED"}:
+        raise HTTPException(400, "Invalid approval status")
+
+    query = db.query(MaterialMatch).filter(MaterialMatch.status == status_key)
+    classification_key = classification.upper() if classification else None
+    allowed_classifications = {"EXACT", "NEAR_DUPLICATE", "FUNCTIONAL_EQUIVALENT"}
+    if classification_key:
+        if classification_key not in allowed_classifications:
+            raise HTTPException(400, "Invalid match classification")
+        query = query.filter(MaterialMatch.classification == classification_key)
+
+    sort_key = sort_by.upper()
+    orderings = {
+        "CONFIDENCE_DESC": (MaterialMatch.final_score.desc(), MaterialMatch.id.desc()),
+        "CONFIDENCE_ASC": (MaterialMatch.final_score.asc(), MaterialMatch.id.asc()),
+        "NEWEST": (MaterialMatch.created_at.desc(), MaterialMatch.id.desc()),
+        "OLDEST": (MaterialMatch.created_at.asc(), MaterialMatch.id.asc()),
+    }
+    if sort_key not in orderings:
+        raise HTTPException(400, "Invalid approval sort")
+    result = paginate(
+        query.order_by(*orderings[sort_key]),
+        page,
+        limit,
+    )
+    matches = result["items"]
+    material_ids = {
+        material_id
+        for match in matches
+        for material_id in (match.material_a_id, match.material_b_id)
+    }
+    materials = (
+        db.query(Material).filter(Material.id.in_(material_ids)).all()
+        if material_ids else []
+    )
+    material_by_id = {material.id: material for material in materials}
+    cpse_ids = {material.cpse_id for material in materials}
+    cpse_by_id = {
+        cpse.id: cpse
+        for cpse in (
+            db.query(CPSE).filter(CPSE.id.in_(cpse_ids)).all()
+            if cpse_ids else []
+        )
+    }
+
+    def material_data(material_id):
+        material = material_by_id.get(material_id)
+        if not material:
+            return None
+        cpse = cpse_by_id.get(material.cpse_id)
+        return {
+            "id": material.id,
+            "material_code": material.material_code,
+            "description": material.description,
+            "category": material.category,
+            "unit": material.unit,
+            "specifications": material.specifications or {},
+            "cpse_code": cpse.code if cpse else f"CPSE-{material.cpse_id}",
+        }
+
+    result["items"] = [
+        {
+            "id": match.id,
+            "final_score": match.final_score,
+            "classification": match.classification,
+            "semantic_score": match.semantic_score,
+            "attribute_score": match.attribute_score,
+            "fuzzy_score": match.fuzzy_score,
+            "explanation": match.explanation,
+            "status": match.status,
+            "created_at": match.created_at,
+            "material_a": material_data(match.material_a_id),
+            "material_b": material_data(match.material_b_id),
+            "canonical_proposal": propose_canonical([
+                material_by_id[item_id] for item_id in (match.material_a_id, match.material_b_id)
+                if item_id in material_by_id
+            ]),
+        }
+        for match in matches
+    ]
+    count_rows = db.query(
+        MaterialMatch.status,
+        func.count(MaterialMatch.id),
+    ).group_by(MaterialMatch.status).all()
+    counts = {"PENDING": 0, "APPROVED": 0, "REJECTED": 0}
+    counts.update({row_status: count for row_status, count in count_rows})
+    result["counts"] = counts
+    classification_rows = db.query(
+        MaterialMatch.classification,
+        func.count(MaterialMatch.id),
+    ).filter(
+        MaterialMatch.status == status_key,
+    ).group_by(MaterialMatch.classification).all()
+    classification_counts = {key: 0 for key in allowed_classifications}
+    classification_counts.update({key: count for key, count in classification_rows})
+    result["classification_counts"] = classification_counts
+    return result
 
 @router.post("/{match_id}/approve")
-def approve(match_id: int, db: Session = Depends(get_db)):
-    match = db.query(MaterialMatch).get(match_id)
-    if not match:
-        # Try parsing 'app-1' format
-        try:
-            match = db.query(MaterialMatch).first()
-        except:
-            pass
-
-    if match:
-        match.status = "approved"
-        log = AuditLog(user_id=1, action="APPROVAL", details=f"Officer approved match #{match.id} into National Material Master.")
-        db.add(log)
-        db.commit()
-        return {"message": "Match approved", "match_id": match.id}
-
-    return {"message": "Match approved", "match_id": match_id}
+@router.put("/{match_id}/approve")
+def approve(
+    match_id: int,
+    payload: ApprovalRequest | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("approval.review")),
+):
+    return approve_match(
+        db, match_id, reviewer_id=current_user.id,
+        comment=payload.comment if payload else None,
+        canonical_values=payload.canonical_values if payload else {},
+        acknowledge_critical_conflicts=payload.acknowledge_critical_conflicts if payload else False,
+        acknowledge_functional_equivalent=payload.acknowledge_functional_equivalent if payload else False,
+    )
 
 @router.post("/{match_id}/reject")
-def reject(match_id: int, db: Session = Depends(get_db)):
-    match = db.query(MaterialMatch).get(match_id)
-    if match:
-        match.status = "rejected"
-        log = AuditLog(user_id=1, action="REJECT", details=f"Officer rejected candidate match #{match.id}.")
-        db.add(log)
-        db.commit()
-        return {"message": "Match rejected", "match_id": match.id}
-
-    return {"message": "Match rejected", "match_id": match_id}
+@router.put("/{match_id}/reject")
+def reject(
+    match_id: int,
+    payload: ApprovalRequest | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("approval.review")),
+):
+    return reject_match(
+        db, match_id, reviewer_id=current_user.id,
+        comment=payload.comment if payload else None,
+    )

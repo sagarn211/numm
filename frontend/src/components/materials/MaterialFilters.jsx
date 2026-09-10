@@ -1,6 +1,4 @@
-import React from 'react';
-import { Search, Filter, RotateCcw } from 'lucide-react';
-import { Button } from '../common/Button';
+import { Search, RotateCcw } from 'lucide-react';
 
 export const MaterialFilters = ({
   search,
@@ -11,8 +9,11 @@ export const MaterialFilters = ({
   onSectorChange,
   status,
   onStatusChange,
-  onReset
+  onReset,
+  cpses = []
 }) => {
+  const sectors = Array.from(new Set(cpses.map(c => c.sector).filter(Boolean)));
+
   return (
     <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs space-y-3 mb-5">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -36,11 +37,11 @@ export const MaterialFilters = ({
             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="ALL">All CPSEs</option>
-            <option value="ONGC">ONGC (Oil & Gas)</option>
-            <option value="NTPC">NTPC (Power)</option>
-            <option value="SAIL">SAIL (Steel)</option>
-            <option value="CIL">CIL (Mining)</option>
-            <option value="BHEL">BHEL (Heavy Eng.)</option>
+            {cpses.map((c) => (
+              <option key={c.id} value={c.code}>
+                {c.code} ({c.sector})
+              </option>
+            ))}
           </select>
         </div>
 
@@ -52,11 +53,11 @@ export const MaterialFilters = ({
             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="ALL">All Sectors</option>
-            <option value="Oil & Gas">Oil & Gas</option>
-            <option value="Power">Power</option>
-            <option value="Steel">Steel</option>
-            <option value="Mining">Mining</option>
-            <option value="Heavy Engineering">Heavy Engineering</option>
+            {sectors.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
           </select>
         </div>
 

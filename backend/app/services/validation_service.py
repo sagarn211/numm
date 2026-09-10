@@ -1,49 +1,12 @@
-REQUIRED_COLUMNS = [
-    "material_code",
-    "description"
-]
-
+REQUIRED_COLUMNS = {"material_code", "description"}
 
 def validate_columns(columns):
-
-    missing = []
-
-    normalized_columns = [
-        str(column).strip().lower()
-        for column in columns
-    ]
-
-    for column in REQUIRED_COLUMNS:
-
-        if column not in normalized_columns:
-
-            missing.append(column)
-
-    return missing
-
+    return sorted(REQUIRED_COLUMNS - set(columns))
 
 def validate_material_row(row):
-
     errors = []
-
-    material_code = row.get(
-        "material_code"
-    )
-
-    description = row.get(
-        "description"
-    )
-
-    if not material_code:
-
-        errors.append(
-            "material_code is required"
-        )
-
-    if not description:
-
-        errors.append(
-            "description is required"
-        )
-
+    if not row.get("material_code"):
+        errors.append(("material_code", "MISSING_MATERIAL_CODE", "Material code is required"))
+    if not row.get("description"):
+        errors.append(("description", "MISSING_DESCRIPTION", "Description is required"))
     return errors

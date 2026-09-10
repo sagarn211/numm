@@ -1,4 +1,3 @@
-import React from 'react';
 import { CheckCircle2, AlertTriangle, XCircle, Sparkles, Globe2 } from 'lucide-react';
 import { Button } from '../common/Button';
 import { getCPSEBadgeColor } from '../../utils/formatters';
@@ -6,7 +5,7 @@ import { getCPSEBadgeColor } from '../../utils/formatters';
 export const ComparisonPanel = ({ comparisonData, onCreateMapping }) => {
   if (!comparisonData) return null;
 
-  const { materialA, materialB, comparisons, aiVerdict, confidenceScore, suggestedNationalCode } = comparisonData;
+  const { materialA, materialB, comparisons, aiVerdict, confidenceScore, suggestedNationalCode, aiMatch } = comparisonData;
 
   const badgeA = getCPSEBadgeColor(materialA.cpse);
   const badgeB = getCPSEBadgeColor(materialB.cpse);
@@ -49,7 +48,7 @@ export const ComparisonPanel = ({ comparisonData, onCreateMapping }) => {
           <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-700">
             Technical Parameter Audit Grid
           </h4>
-          <span className="text-[11px] text-slate-400 font-mono">8 Field Checks Evaluated</span>
+          <span className="text-[11px] text-slate-400 font-mono">{comparisons.length} Field Checks Evaluated</span>
         </div>
 
         <div className="divide-y divide-slate-100 text-xs">
@@ -94,6 +93,52 @@ export const ComparisonPanel = ({ comparisonData, onCreateMapping }) => {
           })}
         </div>
       </div>
+
+      {/* Real AI Score Breakdown */}
+      {aiMatch && (
+        <div className="bg-white rounded-xl border border-indigo-200 overflow-hidden shadow-2xs">
+          <div className="p-4 border-b border-indigo-100 bg-indigo-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-indigo-900">
+              <Sparkles className="w-4 h-4 text-indigo-600" />
+              <h4 className="text-xs font-extrabold uppercase tracking-wider">AI Score Breakdown</h4>
+            </div>
+            <span className="font-mono text-[11px] font-bold text-indigo-700">
+              {aiMatch.model_name || aiMatch.model} · {aiMatch.matcher_version}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-slate-100">
+            {[
+              ['Semantic', aiMatch.semantic_score],
+              ['Attributes', aiMatch.attribute_score],
+              ['Fuzzy text', aiMatch.fuzzy_score],
+              ['Final confidence', aiMatch.final_score],
+            ].map(([label, score]) => (
+              <div key={label} className="p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</p>
+                <p className="mt-1 text-xl font-extrabold font-mono text-slate-900">
+                  {(Number(score || 0) * 100).toFixed(1)}%
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="p-4 border-t border-slate-100 bg-slate-50/60 text-xs">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <span className="font-bold text-slate-700">Classification:</span>
+              <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                aiMatch.classification === 'EXACT' ? 'bg-emerald-100 text-emerald-800' :
+                aiMatch.classification === 'FUNCTIONAL_EQUIVALENT' ? 'bg-amber-100 text-amber-800' :
+                aiMatch.classification === 'NO_MATCH' ? 'bg-rose-100 text-rose-800' : 'bg-blue-100 text-blue-800'
+              }`}>
+                {String(aiMatch.classification || 'NO_MATCH').replaceAll('_', ' ')}
+              </span>
+              {aiMatch.classification === 'FUNCTIONAL_EQUIVALENT' && (
+                <span className="text-amber-700 font-semibold">Human review required.</span>
+              )}
+            </div>
+            <p className="text-slate-600 leading-relaxed">{aiMatch.explanation}</p>
+          </div>
+        </div>
+      )}
 
       {/* AI Verdict Banner */}
       <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white rounded-2xl p-6 shadow-xl border border-cyan-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

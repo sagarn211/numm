@@ -1,151 +1,61 @@
 import logging
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-from app.config.database import (
-    Base,
-    engine
-)
-
 from app.config.settings import settings
+from app.routers import procurement
+from app.routers import mapping_history
+import app.models
 
-from app.models import (
-    User,
-    CPSE,
-    Material,
-    MaterialMatch,
-    NationalMaterial,
-    MaterialMapping,
-    ImportBatch,
-    AuditLog
-)
-
-from app.middleware.error_middleware import (
-    error_middleware
-)
-
-from app.middleware.logging_middleware import (
-    logging_middleware
-)
-
+from app.middleware.error_middleware import error_middleware
+from app.middleware.logging_middleware import logging_middleware
 from app.routers import (
-    materials,
-    imports,
-    matching,
-    approvals,
-    national_materials,
-    dashboard,
-    audit,
-    auth
-    
+    auth, cpses, materials, imports, matching, approvals, national_materials,
+    inventory, requests, audit, dashboard, integrations, data_quality, demand, exports, users
 )
 
-
-logging.basicConfig(
-    level=logging.INFO
-)
-
-
-# Create database tables
-Base.metadata.create_all(
-    bind=engine
-)
-
+logging.basicConfig(level=logging.INFO)
+if not settings.SECRET_KEY or settings.SECRET_KEY.lower().startswith(("dev-secret", "change-this", "replace-with")):
+    raise RuntimeError("SECRET_KEY must be configured with a non-placeholder value")
 
 app = FastAPI(
-    title=(
-        "National Unified "
-        "Material Master API"
-    ),
-    description=(
-        "AI-powered platform for "
-        "material master standardization "
-        "across CPSEs."
-    ),
-    version="1.0.0"
+    title="National Unified Material Master API",
+    version="1.0.0",
+    description="One Nation - One Material Code",
 )
 
-
-# Middleware
-app.middleware(
-    "http"
-)(error_middleware)
-
-app.middleware(
-    "http"
-)(logging_middleware)
-
-
-# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
+    allow_origins=list(dict.fromkeys([
         settings.FRONTEND_URL,
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "*"
-    ],
+    ])),
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
+app.middleware("http")(logging_middleware)
+app.middleware("http")(error_middleware)
 
-# Routers
-app.include_router(
-    materials.router
-)
-
-app.include_router(
-    imports.router
-)
-
-app.include_router(
-    matching.router
-)
-
-app.include_router(
-    approvals.router
-)
-
-app.include_router(
-    national_materials.router
-)
-
-app.include_router(
-    dashboard.router
-)
-
-app.include_router(
-    audit.router
-)
-
-app.include_router(
-    audit.router,
-    prefix="/api/audit-trail"
-)
-
-app.include_router(
-    auth.router
-)
+for router in [
+    procurement.router,
+    mapping_history.router,
+    auth.router, cpses.router, materials.router, imports.router, matching.router,
+    approvals.router, national_materials.router, inventory.router, requests.router,
+    audit.router, dashboard.router, integrations.router, data_quality.router,
+    demand.router, exports.router, users.router,
+]:
+    app.include_router(router)
 
 @app.get("/")
 def root():
-
     return {
-        "success": True,
-        "message": (
-            "National Unified Material "
-            "Master API is running"
-        )
+        "name": "National Unified Material Master",
+        "theme": "One Nation - One Material Code",
+        "version": "1.0.0",
     }
-
 
 @app.get("/health")
 def health():
-
-    return {
-        "success": True,
-        "status": "healthy"
-    }
+    return {"status": "ok"}

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Activity, Search, Filter, ShieldCheck, User, Clock } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Activity, Search, User, Clock, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { nationalMaterialApi } from '../services/nationalMaterialApi';
 import { Loading } from '../components/common/Loading';
 import { EmptyState } from '../components/common/EmptyState';
@@ -10,22 +10,31 @@ export const AuditTrail = () => {
   const [loading, setLoading] = useState(true);
   const [cpseFilter, setCpseFilter] = useState('ALL');
   const [search, setSearch] = useState('');
+  const [integrity, setIntegrity] = useState(null);
+  const [error, setError] = useState('');
 
-  const loadAuditLogs = async () => {
+  const loadAuditLogs = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
-      const res = await nationalMaterialApi.getAuditTrail({ cpse: cpseFilter, search });
+      const [res, verification] = await Promise.all([
+        nationalMaterialApi.getAuditTrail({ cpse: cpseFilter, search }),
+        nationalMaterialApi.verifyAuditTrail(),
+      ]);
       setLogs(res.data);
+      setIntegrity(verification.data);
     } catch (err) {
-      console.error('Failed to load audit logs', err);
+      setLogs([]);
+      setIntegrity(null);
+      setError(err?.response?.data?.detail || err.message || 'Failed to load the governance ledger.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [cpseFilter, search]);
 
   useEffect(() => {
     loadAuditLogs();
-  }, [cpseFilter, search]);
+  }, [loadAuditLogs]);
 
   return (
     <div className="space-y-6">
@@ -37,6 +46,15 @@ export const AuditTrail = () => {
           <p className="text-xs text-slate-500 mt-0.5">Immutable record of all system events, data ingestions, AI recommendations, and officer approval actions</p>
         </div>
       </div>
+
+      {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700">{error}</div>}
+      {integrity && <div className={`flex items-center gap-3 rounded-xl border p-4 ${integrity.status === 'VALID' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-rose-200 bg-rose-50 text-rose-800'}`}>
+        {integrity.status === 'VALID' ? <ShieldCheck className="h-5 w-5" /> : <ShieldAlert className="h-5 w-5" />}
+        <div>
+          <div className="text-xs font-bold">Tamper-Evident Governance Ledger: {integrity.status}</div>
+          <div className="text-[11px]">{integrity.hashed_records_checked} hashed events verified; {integrity.legacy_unhashed_records} legacy events remain outside the cryptographic boundary.</div>
+        </div>
+      </div>}
 
       {/* Filter Bar */}
       <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs grid grid-cols-1 sm:grid-cols-3 gap-3">

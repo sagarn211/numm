@@ -1,0 +1,6 @@
+cpse_id,material_code,warehouse,available_quantity,reserved_quantity,uom
+1,ONGC-1001,Mumbai Central,250,20,EA
+2,NTPC-48123,Delhi Store,125,5,EA
+3,SAIL-2201,Bhilai Store,500,0,EA
+4,CIL-3301,Dhanbad Store,80,10,EA
+5,BHEL-9011,Bhopal Store,300,25,EA

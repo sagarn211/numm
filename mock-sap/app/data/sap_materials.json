@@ -1,0 +1,98 @@
+[
+  {
+    "cpse_id": 1,
+    "material_code": "ONGC-1001",
+    "description": "HEX BOLT M16X50 SS304",
+    "category": "FASTENER",
+    "uom": "NOS",
+    "manufacturer": "ABC Engineering",
+    "model_number": null,
+    "specifications": {
+      "diameter": "M16",
+      "length": "50MM",
+      "grade": "SS304"
+    }
+  },
+  {
+    "cpse_id": 1,
+    "material_code": "ONGC-1002",
+    "description": "HEX NUT M16 SS304",
+    "category": "FASTENER",
+    "uom": "PCS",
+    "manufacturer": "ABC Engineering",
+    "model_number": null,
+    "specifications": {
+      "diameter": "M16",
+      "grade": "SS304"
+    }
+  },
+  {
+    "cpse_id": 2,
+    "material_code": "NTPC-48123",
+    "description": "BOLT HEXAGONAL M16 X 50 STAINLESS STEEL 304",
+    "category": "FASTENER",
+    "uom": "EA",
+    "manufacturer": "PowerFast",
+    "model_number": null,
+    "specifications": {
+      "diameter": "M16",
+      "length": "50MM",
+      "grade": "SS304"
+    }
+  },
+  {
+    "cpse_id": 2,
+    "material_code": "NTPC-48124",
+    "description": "HEXAGONAL NUT M16 STAINLESS STEEL 304",
+    "category": "FASTENER",
+    "uom": "EA",
+    "manufacturer": "PowerFast",
+    "model_number": null,
+    "specifications": {
+      "diameter": "M16",
+      "grade": "SS304"
+    }
+  },
+  {
+    "cpse_id": 3,
+    "material_code": "SAIL-2201",
+    "description": "HEX BOLT M16X50 MS",
+    "category": "FASTENER",
+    "uom": "PCS",
+    "manufacturer": "SteelFix",
+    "model_number": null,
+    "specifications": {
+      "diameter": "M16",
+      "length": "50MM",
+      "grade": "MS"
+    }
+  },
+  {
+    "cpse_id": 4,
+    "material_code": "CIL-3301",
+    "description": "HEX BOLT M20X75 SS304",
+    "category": "FASTENER",
+    "uom": "NOS",
+    "manufacturer": "MineTech",
+    "model_number": null,
+    "specifications": {
+      "diameter": "M20",
+      "length": "75MM",
+      "grade": "SS304"
+    }
+  },
+  {
+    "cpse_id": 5,
+    "material_code": "BHEL-9011",
+    "description": "SS 304 HEX HEAD BOLT M16 X 50",
+    "category": "FASTENER",
+    "uom": "PCS",
+    "manufacturer": "BHEL Vendor",
+    "model_number": null,
+    "specifications": {
+      "diameter": "M16",
+      "length": "50MM",
+      "grade": "SS304"
+    }
+  }
+]

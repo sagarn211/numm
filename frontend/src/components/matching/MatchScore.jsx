@@ -1,5 +1,3 @@
-import React from 'react';
-
 export const MatchScore = ({ confidence = 97.4, metrics = {} }) => {
   const score = typeof confidence === 'number' ? confidence : parseFloat(confidence || 0);
 

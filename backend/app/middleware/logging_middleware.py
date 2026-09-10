@@ -1,34 +1,9 @@
-import logging
-import time
+import logging, time
+logger = logging.getLogger("numm.api")
 
-from fastapi import Request
-
-
-logger = logging.getLogger(
-    "material_master"
-)
-
-
-async def logging_middleware(
-    request: Request,
-    call_next
-):
-
-    start_time = time.perf_counter()
-
+async def logging_middleware(request, call_next):
+    started = time.perf_counter()
     response = await call_next(request)
-
-    duration = (
-        time.perf_counter()
-        - start_time
-    )
-
-    logger.info(
-        "%s %s -> %s (%.3fs)",
-        request.method,
-        request.url.path,
-        response.status_code,
-        duration
-    )
-
+    ms = round((time.perf_counter() - started) * 1000, 2)
+    logger.info("%s %s -> %s (%sms)", request.method, request.url.path, response.status_code, ms)
     return response

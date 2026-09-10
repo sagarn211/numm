@@ -1,40 +1,24 @@
 from typing import Any
-from typing import Dict
-from typing import Optional
+from pydantic import BaseModel, Field
 
-from pydantic import BaseModel
-
-
-class MaterialBase(BaseModel):
-
+class MaterialCreate(BaseModel):
     cpse_id: int
-
     material_code: str
-
     description: str
+    category: str | None = None
+    subcategory: str | None = None
+    unit: str | None = None
+    manufacturer: str | None = None
+    model: str | None = None
+    specifications: dict[str, Any] = Field(default_factory=dict)
+    source: str = "MANUAL"
 
-    category: Optional[str] = None
-
-    unit: Optional[str] = None
-
-    manufacturer: Optional[str] = None
-
-    model: Optional[str] = None
-
-    specifications: Optional[
-        Dict[str, Any]
-    ] = None
-
-
-class MaterialCreate(MaterialBase):
-    pass
-
-
-class MaterialResponse(MaterialBase):
-
-    id: int
-
-    source: Optional[str] = None
-
-    class Config:
-        from_attributes = True
+class MaterialUpdate(BaseModel):
+    description: str | None = None
+    category: str | None = None
+    subcategory: str | None = None
+    unit: str | None = None
+    manufacturer: str | None = None
+    model: str | None = None
+    specifications: dict[str, Any] | None = None
+    status: str | None = None

@@ -1,5 +1,4 @@
-import React from 'react';
-import { Sparkles, ArrowRight, GitCompare, CheckCircle2, XCircle, ShieldAlert } from 'lucide-react';
+import { Sparkles, GitCompare, CheckCircle2, XCircle } from 'lucide-react';
 import { MatchScore } from './MatchScore';
 import { Button } from '../common/Button';
 import { getCPSEBadgeColor } from '../../utils/formatters';

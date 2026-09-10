@@ -1,36 +1,16 @@
 from typing import Any
-from typing import Dict
-from typing import Optional
-
-from pydantic import BaseModel
-
-
+from pydantic import BaseModel, Field
 class NationalMaterialCreate(BaseModel):
-
     description: str
+    category: str | None = None
+    subcategory: str | None = None
+    unit: str | None = None
+    specifications: dict[str, Any] = Field(default_factory=dict)
 
-    category: Optional[str] = None
-
-    unit: Optional[str] = None
-
-    specifications: Optional[
-        Dict[str, Any]
-    ] = None
-
-
-class NationalMaterialResponse(BaseModel):
-
-    id: int
-
-    national_code: str
-
-    description: str
-
-    category: Optional[str]
-
-    unit: Optional[str]
-
-    status: str
-
-    class Config:
-        from_attributes = True
+class NationalMaterialUpdate(BaseModel):
+    description: str | None = None
+    category: str | None = None
+    subcategory: str | None = None
+    unit: str | None = None
+    specifications: dict[str, Any] | None = None
+    status: str | None = None

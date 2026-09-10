@@ -1,47 +1,101 @@
-import React, { useEffect, useState } from 'react';
-import { CheckSquare, CheckCircle2, XCircle, Sparkles, Eye, ShieldCheck, FileCheck } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { CheckSquare, CheckCircle2, XCircle, Sparkles, Eye, ShieldCheck } from 'lucide-react';
 import { nationalMaterialApi } from '../services/nationalMaterialApi';
 import { Modal } from '../components/common/Modal';
 import { Button } from '../components/common/Button';
 import { Loading } from '../components/common/Loading';
 import { EmptyState } from '../components/common/EmptyState';
 import { getCPSEBadgeColor, formatConfidence } from '../utils/formatters';
+import { useAuth } from '../hooks/useAuth';
+import { hasPermission } from '../utils/permissions';
+
+const PAGE_SIZE = 25;
 
 export const Approvals = () => {
+  const { user } = useAuth();
+  const canReview = hasPermission(user, 'approval.review');
   const [approvals, setApprovals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('PENDING'); // PENDING | APPROVED | REJECTED
   const [selectedApproval, setSelectedApproval] = useState(null);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, pages: 0 });
+  const [counts, setCounts] = useState({ PENDING: 0, APPROVED: 0, REJECTED: 0 });
+  const [classification, setClassification] = useState('ALL');
+  const [sortBy, setSortBy] = useState('CONFIDENCE_DESC');
+  const [classificationCounts, setClassificationCounts] = useState({ EXACT: 0, NEAR_DUPLICATE: 0, FUNCTIONAL_EQUIVALENT: 0 });
+  const [canonicalValues, setCanonicalValues] = useState({});
+  const [functionalEquivalentAcknowledged, setFunctionalEquivalentAcknowledged] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+  const [substitutionConditions, setSubstitutionConditions] = useState('');
 
-  const loadApprovals = async () => {
+  const loadApprovals = useCallback(async (requestedPage = page) => {
     setLoading(true);
     try {
-      const res = await nationalMaterialApi.getApprovals();
-      setApprovals(res.data);
+      const res = await nationalMaterialApi.getApprovals(tab, requestedPage, PAGE_SIZE, { classification, sortBy });
+      setApprovals(res.data || []);
+      setPagination(res.pagination || { page: requestedPage, limit: PAGE_SIZE, total: 0, pages: 0 });
+      setCounts(res.counts || { PENDING: 0, APPROVED: 0, REJECTED: 0 });
+      setClassificationCounts(res.classificationCounts || { EXACT: 0, NEAR_DUPLICATE: 0, FUNCTIONAL_EQUIVALENT: 0 });
     } catch (err) {
       console.error('Failed to load approvals', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [classification, page, sortBy, tab]);
 
   useEffect(() => {
+    // Approval data is loaded when the selected server-side page changes.
     loadApprovals();
-  }, []);
+  }, [loadApprovals]);
+
+  const selectTab = (nextTab) => {
+    setTab(nextTab);
+    setPage(1);
+    setSelectedApproval(null);
+  };
 
   const handleApprove = async (id) => {
-    await nationalMaterialApi.approveMapping(id);
+    const critical = (selectedApproval?.conflicts || []).filter(item => item.requires_review);
+    const unresolved = critical.filter(item => !canonicalValues[item.field]);
+    if (unresolved.length && selectedApproval?.classification !== 'FUNCTIONAL_EQUIVALENT') {
+      setReviewError('Resolve every safety-critical conflict before approval.');
+      return;
+    }
+    const isFunctionalEquivalent = selectedApproval?.classification === 'FUNCTIONAL_EQUIVALENT';
+    if (isFunctionalEquivalent && !functionalEquivalentAcknowledged) {
+      setReviewError('Explicitly acknowledge the functional-equivalent mapping policy before approval.');
+      return;
+    }
+    if (isFunctionalEquivalent && !substitutionConditions.trim()) {
+      setReviewError('Describe the intended application and substitution limitations.');
+      return;
+    }
+    try {
+      await nationalMaterialApi.approveMapping(id, isFunctionalEquivalent ? substitutionConditions : 'Officer approved canonical values', canonicalValues, critical.length > 0, functionalEquivalentAcknowledged);
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      setReviewError(typeof detail === 'string' ? detail : detail?.message || err.message || 'Unable to approve this mapping.');
+      return;
+    }
     setSelectedApproval(null);
-    loadApprovals();
+    const nextPage = approvals.length === 1 && page > 1 ? page - 1 : page;
+    if (nextPage !== page) setPage(nextPage);
+    else loadApprovals(nextPage);
   };
 
   const handleReject = async (id) => {
-    await nationalMaterialApi.rejectMapping(id, 'Officer rejected candidate pair');
+    try {
+      await nationalMaterialApi.rejectMapping(id, 'Officer rejected candidate pair');
+    } catch (err) {
+      setReviewError(err?.response?.data?.detail || err.message || 'Unable to reject this mapping.');
+      return;
+    }
     setSelectedApproval(null);
-    loadApprovals();
+    const nextPage = approvals.length === 1 && page > 1 ? page - 1 : page;
+    if (nextPage !== page) setPage(nextPage);
+    else loadApprovals(nextPage);
   };
-
-  const filteredApprovals = approvals.filter(a => a.status === tab);
 
   return (
     <div className="space-y-6">
@@ -57,44 +111,75 @@ export const Approvals = () => {
       {/* Tabs */}
       <div className="bg-white p-2 rounded-xl border border-slate-200/80 shadow-2xs flex items-center gap-2 text-xs font-bold">
         <button
-          onClick={() => setTab('PENDING')}
+          onClick={() => selectTab('PENDING')}
           className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
             tab === 'PENDING' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
           <span>Pending Review Queue</span>
           <span className="bg-blue-800 text-white px-2 py-0.5 rounded-full text-[10px] font-mono">
-            {approvals.filter(a => a.status === 'PENDING').length}
+            {counts.PENDING}
           </span>
         </button>
         <button
-          onClick={() => setTab('APPROVED')}
+          onClick={() => selectTab('APPROVED')}
           className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
             tab === 'APPROVED' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
           <span>Approved Mappings</span>
           <span className="bg-emerald-800 text-white px-2 py-0.5 rounded-full text-[10px] font-mono">
-            {approvals.filter(a => a.status === 'APPROVED').length}
+            {counts.APPROVED}
           </span>
         </button>
         <button
-          onClick={() => setTab('REJECTED')}
+          onClick={() => selectTab('REJECTED')}
           className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
             tab === 'REJECTED' ? 'bg-rose-600 text-white' : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
           <span>Rejected Items</span>
           <span className="bg-rose-800 text-white px-2 py-0.5 rounded-full text-[10px] font-mono">
-            {approvals.filter(a => a.status === 'REJECTED').length}
+            {counts.REJECTED}
           </span>
         </button>
+      </div>
+
+      {/* Duplicate filters */}
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200/80 bg-white p-3 shadow-2xs sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="font-bold text-slate-600">Duplicate type</span>
+          <select
+            value={classification}
+            onChange={(event) => { setClassification(event.target.value); setPage(1); }}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 font-semibold text-slate-700"
+          >
+            <option value="ALL">All candidates ({Object.values(classificationCounts).reduce((sum, count) => sum + count, 0)})</option>
+            <option value="EXACT">Exact duplicates ({classificationCounts.EXACT})</option>
+            <option value="NEAR_DUPLICATE">Near duplicates ({classificationCounts.NEAR_DUPLICATE})</option>
+            <option value="FUNCTIONAL_EQUIVALENT">Functional equivalents ({classificationCounts.FUNCTIONAL_EQUIVALENT})</option>
+          </select>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          <label htmlFor="approval-sort" className="font-bold text-slate-600">Sort</label>
+          <select
+            id="approval-sort"
+            value={sortBy}
+            onChange={(event) => { setSortBy(event.target.value); setPage(1); }}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 font-semibold text-slate-700"
+          >
+            <option value="CONFIDENCE_DESC">Highest confidence first</option>
+            <option value="CONFIDENCE_ASC">Lowest confidence first</option>
+            <option value="NEWEST">Newest first</option>
+            <option value="OLDEST">Oldest first</option>
+          </select>
+        </div>
       </div>
 
       {/* List */}
       {loading ? (
         <Loading type="skeleton" rows={4} />
-      ) : filteredApprovals.length === 0 ? (
+      ) : approvals.length === 0 ? (
         <EmptyState
           icon={CheckSquare}
           title={`No ${tab} Approvals`}
@@ -116,7 +201,7 @@ export const Approvals = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
-                {filteredApprovals.map((app) => (
+                {approvals.map((app) => (
                   <tr key={app.id} className="hover:bg-slate-50">
                     <td className="py-3.5 px-4 font-bold text-slate-900">
                       {app.materialGroup}
@@ -139,8 +224,8 @@ export const Approvals = () => {
                     </td>
                     <td className="py-3.5 px-4 text-slate-400 font-mono">{app.submittedDate}</td>
                     <td className="py-3.5 px-4 text-right">
-                      <Button variant="primary" size="sm" icon={Eye} onClick={() => setSelectedApproval(app)}>
-                        Review & Approve
+                      <Button variant="primary" size="sm" icon={Eye} onClick={() => { setSelectedApproval(app); setCanonicalValues({}); setFunctionalEquivalentAcknowledged(false); setSubstitutionConditions(''); setReviewError(''); }}>
+                        {tab === 'PENDING' && canReview ? 'Review & Approve' : 'View Details'}
                       </Button>
                     </td>
                   </tr>
@@ -148,6 +233,24 @@ export const Approvals = () => {
               </tbody>
             </table>
           </div>
+          {pagination.pages > 1 && (
+            <div className="flex flex-col items-center justify-between gap-3 border-t border-slate-200 p-3 sm:flex-row">
+              <span className="text-xs text-slate-500">
+                Showing {(pagination.page - 1) * pagination.limit + 1}–{Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(current => current - 1)}>
+                  Previous
+                </Button>
+                <span className="min-w-24 text-center text-xs font-semibold text-slate-700">
+                  Page {pagination.page} of {pagination.pages}
+                </span>
+                <Button variant="secondary" size="sm" disabled={page >= pagination.pages} onClick={() => setPage(current => current + 1)}>
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -163,12 +266,16 @@ export const Approvals = () => {
             <Button variant="ghost" size="sm" onClick={() => setSelectedApproval(null)}>
               Close
             </Button>
-            <Button variant="danger" size="sm" icon={XCircle} onClick={() => handleReject(selectedApproval?.id)}>
-              Reject Mapping
-            </Button>
-            <Button variant="success" size="sm" icon={CheckCircle2} onClick={() => handleApprove(selectedApproval?.id)}>
-              Approve Mapping
-            </Button>
+            {tab === 'PENDING' && canReview && (
+              <>
+                <Button variant="danger" size="sm" icon={XCircle} onClick={() => handleReject(selectedApproval?.id)}>
+                  Reject Mapping
+                </Button>
+                <Button variant="success" size="sm" icon={CheckCircle2} onClick={() => handleApprove(selectedApproval?.id)}>
+                  {selectedApproval?.classification === 'FUNCTIONAL_EQUIVALENT' ? 'Approve Substitution Recommendation' : 'Approve Mapping'}
+                </Button>
+              </>
+            )}
           </div>
         }
       >
@@ -220,9 +327,27 @@ export const Approvals = () => {
             </div>
 
             {/* Compliance Warning */}
+            {(selectedApproval.conflicts || []).length > 0 && <div className="space-y-2">
+              <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">Canonical conflict resolution</h4>
+              {selectedApproval.conflicts.map(conflict => <label key={conflict.field} className={`block rounded-lg border p-3 ${conflict.requires_review ? 'border-rose-300 bg-rose-50' : 'border-amber-200 bg-amber-50'}`}>
+                <span className="mb-2 block font-bold">{conflict.field}{conflict.requires_review ? ' — safety-critical' : ''}</span>
+                <select className="w-full rounded border bg-white p-2" value={canonicalValues[conflict.field] || ''} onChange={event => setCanonicalValues(values => ({ ...values, [conflict.field]: event.target.value }))}>
+                  <option value="">Select canonical value</option>
+                  {conflict.values.map(value => <option key={String(value)} value={String(value)}>{String(value)}</option>)}
+                </select>
+              </label>)}
+            </div>}
+            {selectedApproval.classification === 'FUNCTIONAL_EQUIVALENT' && (
+              <label className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900">
+                <input type="checkbox" className="mt-0.5" checked={functionalEquivalentAcknowledged} onChange={event => setFunctionalEquivalentAcknowledged(event.target.checked)} />
+                <span>I approve a substitution recommendation for the documented application. Material identities remain separate.</span>
+              </label>
+            )}
+            {reviewError && <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-rose-700">{reviewError}</div>}
+            {selectedApproval.classification === 'FUNCTIONAL_EQUIVALENT' && <label className="block">Application and substitution limitations<textarea className="mt-2 w-full rounded border p-2" value={substitutionConditions} onChange={event => setSubstitutionConditions(event.target.value)} /></label>}
             <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[11px] flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>Officer approval is legally binding and registers this candidate directly to the National Material Master Registry.</span>
+              <span>Approval is recorded with your identity and supporting evidence. Substitution recommendations retain separate material identities.</span>
             </div>
           </div>
         )}

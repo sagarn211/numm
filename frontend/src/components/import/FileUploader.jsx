@@ -1,10 +1,24 @@
-import React, { useState } from 'react';
-import { UploadCloud, FileSpreadsheet, CheckCircle2, AlertCircle } from 'lucide-react';
-import { Button } from '../common/Button';
+import { useState } from 'react';
+import { UploadCloud, FileSpreadsheet, AlertCircle } from 'lucide-react';
 
-export const FileUploader = ({ onFileSelected, cpse, setCpse, sector, setSector }) => {
+export const FileUploader = ({ onFileSelected, cpse, setCpse, sector, setSector, cpses = [], importType = 'MATERIAL' }) => {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [fileError, setFileError] = useState('');
+  const supportedExtensions = ['.csv', '.xlsx'];
+
+  const selectFile = (file) => {
+    const extension = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+    if (!supportedExtensions.includes(extension)) {
+      setSelectedFile(null);
+      setFileError('Only CSV and XLSX files are supported.');
+      onFileSelected(null);
+      return;
+    }
+    setFileError('');
+    setSelectedFile(file);
+    onFileSelected(file);
+  };
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -22,16 +36,14 @@ export const FileUploader = ({ onFileSelected, cpse, setCpse, sector, setSector 
     setDragActive(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      setSelectedFile(file);
-      onFileSelected(file);
+      selectFile(file);
     }
   };
 
   const handleChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setSelectedFile(file);
-      onFileSelected(file);
+      selectFile(file);
     }
   };
 
@@ -46,11 +58,15 @@ export const FileUploader = ({ onFileSelected, cpse, setCpse, sector, setSector 
             onChange={(e) => setCpse(e.target.value)}
             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="NTPC">NTPC Limited (Power)</option>
-            <option value="ONGC">ONGC Corporation (Oil & Gas)</option>
-            <option value="SAIL">SAIL Authority of India (Steel)</option>
-            <option value="CIL">Coal India Limited (Mining)</option>
-            <option value="BHEL">BHEL Heavy Electricals (Heavy Eng.)</option>
+            {cpses.length > 0 ? (
+              cpses.map((c) => (
+                <option key={c.id} value={c.code}>
+                  {c.code} — {c.name} ({c.sector})
+                </option>
+              ))
+            ) : (
+              <option value={cpse}>{cpse}</option>
+            )}
           </select>
         </div>
 
@@ -86,7 +102,7 @@ export const FileUploader = ({ onFileSelected, cpse, setCpse, sector, setSector 
       >
         <input
           type="file"
-          accept=".csv, .xlsx, .xls"
+          accept=".csv, .xlsx"
           onChange={handleChange}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
         />
@@ -109,17 +125,18 @@ export const FileUploader = ({ onFileSelected, cpse, setCpse, sector, setSector 
             </div>
           ) : (
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Upload CPSE Material Dataset</h3>
+              <h3 className="text-sm font-bold text-slate-900">Upload CPSE {importType === 'INVENTORY' ? 'Inventory Stock' : 'Material'} Dataset</h3>
               <p className="text-xs text-slate-500 mt-1">Drag & drop your CSV or Excel file here, or click to browse</p>
+              {importType === 'INVENTORY' && <p className="mt-2 text-[11px] text-blue-700">Required: material_code, warehouse, available_quantity. Optional: cpse_code, reserved_quantity, uom, unit_cost.</p>}
               <div className="flex items-center justify-center gap-2 mt-3">
                 <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">.CSV</span>
                 <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">.XLSX</span>
-                <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">.XLS</span>
               </div>
             </div>
           )}
         </div>
       </div>
+      {fileError && <div className="flex items-center gap-2 text-xs text-rose-700"><AlertCircle className="h-4 w-4" />{fileError}</div>}
     </div>
   );
 };

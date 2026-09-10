@@ -1,12 +1,10 @@
-import React from 'react';
-import { Eye, GitCompare, Globe2, ArrowRight } from 'lucide-react';
+import { Eye, GitCompare } from 'lucide-react';
 import { getCPSEBadgeColor, getStatusBadgeColor, formatConfidence } from '../../utils/formatters';
 
 export const MaterialTable = ({
   materials = [],
   onSelectMaterial,
-  onCompareMaterial,
-  onMapMaterial
+  onCompareMaterial
 }) => {
   return (
     <div className="bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-2xs">
@@ -49,7 +47,8 @@ export const MaterialTable = ({
                     </span>
                   </td>
                   <td className="py-3.5 px-4 text-slate-600 font-medium">
-                    {item.category}
+                    <span className="block">{item.category}</span>
+                    <span className="text-[10px] text-slate-400">{item.subcategory}{item.classificationSource ? ` · ${item.classificationSource}` : ''}</span>
                   </td>
                   <td className="py-3.5 px-4 text-slate-500 font-mono text-[11px] max-w-xs truncate">
                     {item.specification}

@@ -1,21 +1,4 @@
 import pandas as pd
-
-
-def read_csv(file_path):
-
-    dataframe = pd.read_csv(
-        file_path
-    )
-
-    dataframe = dataframe.fillna("")
-
-    dataframe.columns = [
-        str(column)
-        .strip()
-        .lower()
-        for column in dataframe.columns
-    ]
-
-    return dataframe.to_dict(
-        orient="records"
-    )
+from app.services.cleaning_service import clean_dataframe
+def read_csv_file(path: str):
+    return clean_dataframe(pd.read_csv(path))

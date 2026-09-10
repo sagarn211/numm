@@ -1,197 +1,76 @@
-from fastapi import APIRouter
-from fastapi import Depends
-from fastapi import HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
-
 from sqlalchemy.orm import Session
-
 from app.config.database import get_db
 from app.models.user import User
-from app.utils.security import (
-    create_access_token,
-    get_current_user,
-    hash_password,
-    verify_password
-)
+from app.models.cpse import CPSE
+from app.schemas.auth import RegisterRequest, LoginJSONRequest
+from app.utils.security import hash_password, verify_password, create_access_token, get_current_user
+from app.utils.rbac import PENDING_USER, canonical_role, permissions_for, public_role
 
+router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
-router = APIRouter(
-    prefix="/api/auth",
-    tags=["Authentication"]
-)
-
-
-# --------------------------------------------------
-# REGISTER
-# --------------------------------------------------
-
-@router.post("/register")
-def register(
-    name: str,
-    email: str,
-    password: str,
-    role: str = "officer",
-    db: Session = Depends(get_db)
-):
-
-    existing_user = db.query(
-        User
-    ).filter(
-        User.email == email
-    ).first()
-
-    if existing_user:
-
-        raise HTTPException(
-            status_code=400,
-            detail="Email already registered"
-        )
-
-    # Prevent users from creating admin accounts
-    # through public registration.
-    allowed_roles = [
-        "officer",
-        "reviewer",
-        "cpse"
-    ]
-
-    if role not in allowed_roles:
-
-        role = "officer"
-
-    user = User(
-
-        name=name,
-
-        email=email,
-
-        password_hash=hash_password(
-            password
-        ),
-
-        role=role
-    )
-
-    db.add(user)
-
-    db.commit()
-
-    db.refresh(user)
-
-    return {
-
-        "success": True,
-
-        "message": "User registered successfully",
-
-        "user": {
-
-            "id": user.id,
-
-            "name": user.name,
-
-            "email": user.email,
-
-            "role": user.role
-        }
+def normalize_role(role):
+    aliases = {
+        "OFFICER": PENDING_USER,
+        "CPSE": "CPSE_DATA_MANAGER",
     }
+    return public_role(aliases.get((role or "").upper(), role))
 
-
-# --------------------------------------------------
-# LOGIN
-# --------------------------------------------------
-
-from pydantic import BaseModel
-from typing import Optional
-
-class LoginSchema(BaseModel):
-    email: Optional[str] = None
-    username: Optional[str] = None
-    password: str
-
-@router.post("/login")
-def login(
-    payload: Optional[LoginSchema] = None,
-    form_data: Optional[OAuth2PasswordRequestForm] = Depends(lambda: None),
-    db: Session = Depends(get_db)
-):
-    email = None
-    password = None
-
-    if payload:
-        email = payload.email or payload.username
-        password = payload.password
-    elif form_data:
-        email = form_data.username
-        password = form_data.password
-
-    if not email or not password:
-        raise HTTPException(
-            status_code=400,
-            detail="Email/username and password required"
-        )
-
-    user = db.query(User).filter(User.email == email).first()
-
-    if not user:
-        # Create user automatically if initial dev login
-        user = User(
-            name=email.split('@')[0].replace('.', ' ').title() if '@' in email else "Rajesh Kumar",
-            email=email,
-            password_hash=hash_password(password),
-            role="Senior Procurement Officer"
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-
-    password_valid = verify_password(password, user.password_hash) if user.password_hash else True
-
-    token = create_access_token(
-        user_id=user.id,
-        role=user.role
-    )
-
+def token_response(user):
+    token = create_access_token(user.id, user.role)
     return {
-        "success": True,
-        "message": "Login successful",
         "access_token": token,
         "token": token,
         "token_type": "bearer",
         "user": {
-            "id": str(user.id),
+            "id": user.id,
             "name": user.name,
             "email": user.email,
-            "role": user.role,
-            "organization": "National Grid Cell",
-            "badgeId": "CPSE-EXEC-992"
-        }
+            "role": canonical_role(user.role),
+            "cpse_id": user.cpse_id,
+            "permissions": permissions_for(user),
+        },
     }
 
+@router.post("/register")
+def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+    if db.query(User).filter(User.email == payload.email.lower()).first():
+        raise HTTPException(409, "Email already registered")
+    # Public registration creates an unscoped pending identity. An administrator
+    # must verify the requested organization and assign a working role/CPSE.
+    if payload.cpse_id is None:
+        raise HTTPException(400, "A CPSE assignment is required")
+    if not db.query(CPSE).filter(CPSE.id == payload.cpse_id).first():
+        raise HTTPException(400, "Unknown CPSE")
+    user = User(
+        name=payload.name.strip(),
+        email=payload.email.lower(),
+        password_hash=hash_password(payload.password),
+        role=PENDING_USER,
+        cpse_id=None,
+    )
+    db.add(user); db.commit(); db.refresh(user)
+    return token_response(user)
 
-# --------------------------------------------------
-# CURRENT USER
-# --------------------------------------------------
+@router.post("/login")
+def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == form.username.lower()).first()
+    if not user or not verify_password(form.password, user.password_hash):
+        raise HTTPException(401, "Invalid email or password")
+    return token_response(user)
+
+@router.post("/login-json")
+def login_json(payload: LoginJSONRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == payload.email.lower()).first()
+    if not user or not verify_password(payload.password, user.password_hash):
+        raise HTTPException(401, "Invalid email or password")
+    return token_response(user)
 
 @router.get("/me")
-def get_me(
-    current_user: User = Depends(
-        get_current_user
-    )
-):
-
+def me(user: User = Depends(get_current_user)):
     return {
-
-        "success": True,
-
-        "user": {
-
-            "id": current_user.id,
-
-            "name": current_user.name,
-
-            "email": current_user.email,
-
-            "role": current_user.role
-        }
+        "id": user.id, "name": user.name, "email": user.email,
+        "role": canonical_role(user.role), "cpse_id": user.cpse_id,
+        "permissions": permissions_for(user),
     }

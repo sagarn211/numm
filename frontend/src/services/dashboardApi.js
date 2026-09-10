@@ -1,108 +1,80 @@
 import { api } from './api';
 
+const stat = (v, label) => ({ value: Number(v || 0), label, change: 'Live', period: 'PostgreSQL' });
+
 export const dashboardApi = {
   getStats: async () => {
-    try {
-      return await api.get('/api/dashboard/stats');
-    } catch (err) {
-      return {
-        data: {
-          totalCPSEs: { value: 24, label: 'Participating CPSEs', change: '+2', period: 'This month' },
-          totalMaterials: { value: 128492, label: 'Total Material Items', change: '+8.4%', period: 'vs last quarter' },
-          duplicateMaterials: { value: 14320, label: 'Identified Duplicates', change: '-12.3%', period: 'rationalized' },
-          aiMatches: { value: 12840, label: 'AI Matches Found', change: '+14.2%', period: 'auto-clustered' },
-          nationalMaterials: { value: 45210, label: 'National Codes Created', change: '+6.8%', period: 'standardized' },
-          aiConfidenceOverall: 94.7,
-          pendingReviewCount: 382,
-          highConfidenceMappings: 87
-        }
-      };
-    }
+    const { data: d } = await api.get('/api/dashboard/stats');
+    return {
+      data: {
+        totalCPSEs: stat(d.total_cpses ?? d.participating_cpses, 'Participating CPSEs'),
+        totalMaterials: stat(d.total_materials ?? d.total_legacy_materials, 'Total Material Items'),
+        duplicateMaterials: stat(d.duplicate_candidate_materials ?? d.pending_matches, `${d.duplicate_risk_percent ?? 0}% duplicate risk`),
+        aiMatches: stat(d.mapped_materials, 'Mapped Materials'),
+        nationalMaterials: stat(d.total_national_materials ?? d.national_materials, 'National Codes Created'),
+        aiConfidenceOverall: 0,
+        pendingReviewCount: d.pending_matches ?? 0,
+        highConfidenceMappings: d.mapped_materials ?? 0,
+        crossCpseInventory: d.cross_cpse_inventory ?? 0,
+        materialRequests: d.material_requests ?? 0,
+        duplicateRiskPercent: d.duplicate_risk_percent ?? 0,
+        mappingCoveragePercent: d.mapping_coverage_percent ?? 0,
+        estimatedSavingsOpportunity: d.estimated_savings_opportunity ?? 0,
+        stockAnalytics: d.stock_analytics,
+        excessInventoryQuantity: d.excess_inventory_quantity ?? 0,
+        approvalTurnaroundHours: d.average_approval_turnaround_hours ?? 0,
+        importErrorRatePercent: d.import_error_rate_percent ?? 0,
+        savingsAssumption: d.savings_assumption || '',
+        harmonization: d.harmonization || null,
+      }
+    };
   },
 
   getMaterialNetwork: async () => {
-    try {
-      return await api.get('/api/dashboard/network');
-    } catch (err) {
-      return {
-        data: {
-          nationalNodes: [
-            {
-              id: 'NM-VAL-001',
-              title: 'National Material Code: NM-VAL-001',
-              standardDescription: 'SS316 Industrial Ball Valve DN50 PN16 Flanged',
-              category: 'Valves & Actuators',
-              cpses: [
-                { cpse: 'ONGC', code: 'MAT-10231', title: 'Industrial Ball Valve SS316 DN50' },
-                { cpse: 'NTPC', code: 'VLV-77401', title: 'Stainless Steel Ball Valve 50mm' },
-                { cpse: 'SAIL', code: 'STL-VLV-21', title: 'Ball Valve SS 316 Class 150 2"' }
-              ]
-            },
-            {
-              id: 'NM-PMP-002',
-              title: 'National Material Code: NM-PMP-002',
-              standardDescription: 'Centrifugal Heavy Duty Slurry Pump 45kW',
-              category: 'Pumps & Compressors',
-              cpses: [
-                { cpse: 'ONGC', code: 'MAT-88102', title: 'Centrifugal Slurry Pump 45kW' },
-                { cpse: 'CIL', code: 'CIL-PMP-404', title: 'Heavy Duty Submersible Slurry Pump 45kW' }
-              ]
-            },
-            {
-              id: 'NM-PIP-003',
-              title: 'National Material Code: NM-PIP-003',
-              standardDescription: 'Carbon Steel Seamless Pipe 6 Inch Sch 40 API 5L',
-              category: 'Pipes & Fittings',
-              cpses: [
-                { cpse: 'ONGC', code: 'MAT-44102', title: 'CS Seamless Pipe 6" Sch 40 API 5L' },
-                { cpse: 'SAIL', code: 'STL-PIP-88', title: 'Seamless Steel Line Pipe 150mm Sch 40' }
-              ]
-            },
-            {
-              id: 'NM-TRF-004',
-              title: 'National Material Code: NM-TRF-004',
-              standardDescription: 'Power Transformer 33kV/11kV 5MVA Oil Immersed',
-              category: 'Electrical Equipment',
-              cpses: [
-                { cpse: 'NTPC', code: 'ELC-33100', title: 'Power Transformer 33kV/11kV 5MVA' },
-                { cpse: 'BHEL', code: 'BHEL-TR-500', title: '33kV/11kV Step Down Transformer 5MVA' }
-              ]
-            }
-          ]
-        }
-      };
-    }
+    const natRes = await api.get('/api/national-materials');
+    const nationals = natRes.data || [];
+
+    // Fetch individual national detail with mappings
+    const detailedNodes = await Promise.all(
+      nationals.slice(0, 5).map(async (n) => {
+        const detailRes = await api.get(`/api/national-materials/${n.id}/360`);
+        const linkedCpses = (detailRes.data?.legacy_mappings || []).map(m => ({
+          cpse: m.cpse_code,
+          code: m.material.material_code,
+          title: m.material.description,
+        }));
+        return {
+          id: n.national_code,
+          title: n.description,
+          standardDescription: n.description,
+          category: n.category || 'General',
+          cpses: linkedCpses
+        };
+      })
+    );
+
+    return { data: { nationalNodes: detailedNodes } };
   },
 
   getSectorStats: async () => {
-    try {
-      return await api.get('/api/dashboard/sectors');
-    } catch (err) {
-      return {
-        data: [
-          { name: 'Oil & Gas', materials: 42180, duplicates: 4810, matched: 35200, standardization: 88, cpseList: ['ONGC', 'GAIL', 'IOCL'] },
-          { name: 'Power', materials: 36450, duplicates: 3920, matched: 30100, standardization: 85, cpseList: ['NTPC', 'NHPC', 'POWERGRID'] },
-          { name: 'Steel', materials: 24821, duplicates: 1204, matched: 19800, standardization: 82, cpseList: ['SAIL', 'RINL', 'NMDC'] },
-          { name: 'Mining', materials: 14800, duplicates: 2410, matched: 10900, standardization: 76, cpseList: ['CIL', 'NLC', 'MCL'] },
-          { name: 'Heavy Engineering', materials: 10241, duplicates: 1976, matched: 7800, standardization: 74, cpseList: ['BHEL', 'BEL', 'HAL'] }
-        ]
-      };
-    }
+    const response = await api.get('/api/dashboard/analytics');
+    return { data: response.data?.sectors || [] };
   },
 
   getRecentActivity: async () => {
-    try {
-      return await api.get('/api/dashboard/activity');
-    } catch (err) {
-      return {
-        data: [
-          { id: 'act-1', type: 'IMPORT', text: 'NTPC imported 4,821 materials from Q3 Master dataset', timestamp: '2 minutes ago', cpse: 'NTPC' },
-          { id: 'act-2', type: 'AI_MATCH', text: 'AI Engine identified 283 possible duplicate material clusters', timestamp: '8 minutes ago', cpse: 'SYSTEM' },
-          { id: 'act-3', type: 'APPROVAL', text: 'SAIL approved 42 material code mappings to National Registry', timestamp: '21 minutes ago', cpse: 'SAIL' },
-          { id: 'act-4', type: 'CODE_CREATED', text: 'National Material Code NM-PMP-004 generated and registered', timestamp: '1 hour ago', cpse: 'NATIONAL' },
-          { id: 'act-5', type: 'AUDIT', text: 'Senior Procurement Officer approved mapping ONGC-MAT-10231 → NM-VAL-001', timestamp: '2 hours ago', cpse: 'ONGC' }
-        ]
-      };
-    }
-  }
+    const r = await api.get('/api/audit');
+    return {
+      data: (r.data || []).slice(0, 8).map(x => {
+        const details = typeof x.details === 'object' && x.details ? x.details : {};
+        const msg = details.message || `${x.action} event on ${x.entity_type || 'Entity'} #${x.entity_id ?? ''}`;
+        return {
+          id: x.id,
+          type: x.action,
+          text: msg,
+          timestamp: x.created_at?.replace('T', ' ').slice(0, 16) || '',
+          cpse: details.cpse || 'SYSTEM'
+        };
+      })
+    };
+  },
 };

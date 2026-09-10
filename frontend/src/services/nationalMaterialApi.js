@@ -1,253 +1,153 @@
 import { api } from './api';
-import { MOCK_MATERIALS } from './materialApi';
 
-export const MOCK_NATIONAL_MATERIALS = [
-  {
-    id: 'nat-001',
-    nationalCode: 'NM-VAL-001',
-    standardTitle: 'Industrial Ball Valve SS316 DN50 PN16 Flanged',
-    standardSpecification: 'Stainless Steel AISI 316 Body & Trim, Nominal Size DN50 (2 Inch), Pressure Rating PN16 / Class 150, Flanged Ends ANSI B16.5, Fire Tested ISO 10497',
-    category: 'Valves & Actuators',
-    uom: 'EA',
-    status: 'APPROVED',
-    aiConfidence: 98.2,
-    createdDate: '2026-08-01',
-    mappedCPSEs: [
-      { cpse: 'ONGC', originalCode: 'MAT-10231', description: 'Industrial Ball Valve SS316 DN50 PN16 Flanged', mappedDate: '2026-08-15' },
-      { cpse: 'NTPC', originalCode: 'VLV-77401', description: 'Stainless Steel Ball Valve 50mm Class 150 RF', mappedDate: '2026-08-18' },
-      { cpse: 'SAIL', originalCode: 'STL-VLV-21', description: 'Ball Valve SS 316 Class 150 2 Inch Full Port', mappedDate: '2026-08-20' }
-    ],
-    approvalHistory: [
-      { officer: 'Rajesh Kumar (Senior Officer)', action: 'APPROVED', date: '2026-08-20 14:32', comment: 'Specifications and metallurgical grades verified across ONGC, NTPC, and SAIL items.' }
-    ]
-  },
-  {
-    id: 'nat-002',
-    nationalCode: 'NM-PMP-002',
-    standardTitle: 'Centrifugal Heavy Duty Slurry Pump 45kW',
-    standardSpecification: 'Flow 120 m3/hr, Total Head 40m, Motor 45kW 415V 50Hz 3-Phase, High Chrome Alloy Casing Hi-Cr28',
-    category: 'Pumps & Compressors',
-    uom: 'SET',
-    status: 'APPROVED',
-    aiConfidence: 96.5,
-    createdDate: '2026-08-05',
-    mappedCPSEs: [
-      { cpse: 'ONGC', originalCode: 'MAT-88102', description: 'Centrifugal Slurry Pump 45kW 1450RPM Heavy Duty', mappedDate: '2026-08-10' },
-      { cpse: 'CIL', originalCode: 'CIL-PMP-404', description: 'Heavy Duty Submersible Slurry Pump 45kW 50Hz', mappedDate: '2026-08-22' }
-    ],
-    approvalHistory: [
-      { officer: 'Anita Sen (Lead Architect)', action: 'APPROVED', date: '2026-08-23 11:15', comment: 'Harmonized 45kW pump rating and slurry specification across mining and offshore operations.' }
-    ]
-  },
-  {
-    id: 'nat-003',
-    nationalCode: 'NM-PIP-003',
-    standardTitle: 'Carbon Steel Seamless Pipe 6 Inch Sch 40 API 5L Gr B',
-    standardSpecification: 'Seamless Carbon Steel, 6" Nominal Bore (150mm), Wall Thickness Schedule 40, Standard API 5L Grade B, Beveled Ends',
-    category: 'Pipes & Fittings',
-    uom: 'MTR',
-    status: 'APPROVED',
-    aiConfidence: 99.1,
-    createdDate: '2026-08-02',
-    mappedCPSEs: [
-      { cpse: 'ONGC', originalCode: 'MAT-44102', description: 'Carbon Steel Seamless Pipe 6 Inch Sch 40 API 5L Gr B', mappedDate: '2026-08-05' },
-      { cpse: 'SAIL', originalCode: 'STL-PIP-88', description: 'Seamless Steel Line Pipe 150mm Sch 40 Grade B', mappedDate: '2026-08-07' }
-    ],
-    approvalHistory: [
-      { officer: 'Rajesh Kumar (Senior Officer)', action: 'APPROVED', date: '2026-08-07 09:40', comment: 'Exact physical dimensions and API 5L specification match.' }
-    ]
-  },
-  {
-    id: 'nat-004',
-    nationalCode: 'NM-TRF-004',
-    standardTitle: 'Power Transformer 33kV/11kV 5MVA Oil Immersed',
-    standardSpecification: 'HV 33kV, LV 11kV, Power Rating 5 MVA, Vector Group Dyn11, Cooling ONAN, CRGO Core Steel, Outdoor Type',
-    category: 'Electrical Equipment',
-    uom: 'UNIT',
-    status: 'APPROVED',
-    aiConfidence: 98.4,
-    createdDate: '2026-08-12',
-    mappedCPSEs: [
-      { cpse: 'NTPC', originalCode: 'ELC-33100', description: 'Power Transformer 33kV / 11kV 5MVA Oil Immersed', mappedDate: '2026-08-15' },
-      { cpse: 'BHEL', originalCode: 'BHEL-TR-500', description: '33kV / 11kV Step Down Power Transformer 5 MVA ONAN', mappedDate: '2026-08-16' }
-    ],
-    approvalHistory: [
-      { officer: 'V. Raman (Procurement Manager)', action: 'APPROVED', date: '2026-08-16 16:05', comment: 'Verified electrical transformer parameters for NTPC grid integration.' }
-    ]
+const text = x => !x ? '' : typeof x === 'string' ? x : Object.entries(x).map(([k, v]) => `${k}: ${v}`).join(', ');
+
+const allNationalMaterials = async () => {
+  const rows = [];
+  for (let offset = 0; ; offset += 500) {
+    const response = await api.get('/api/national-materials', { params: { limit: 500, offset } });
+    rows.push(...response.data);
+    if (response.data.length < 500) return { data: rows };
   }
-];
-
-export const MOCK_APPROVALS = [
-  {
-    id: 'app-001',
-    materialGroup: 'Industrial SS316 Ball Valve DN50',
-    category: 'Valves & Actuators',
-    cpses: ['ONGC', 'NTPC', 'SAIL'],
-    originalCodes: ['MAT-10231', 'VLV-77401', 'STL-VLV-21'],
-    aiConfidence: 97.8,
-    recommendation: 'Recommend Merge into National Code NM-VAL-001',
-    submittedDate: 'Today, 09:30 AM',
-    status: 'PENDING',
-    evidence: [
-      'Description similarity 98.2%',
-      'Specification similarity 96.5%',
-      'Category match (Valves & Actuators)',
-      'UOM compatibility 100% (EA)'
-    ]
-  },
-  {
-    id: 'app-002',
-    materialGroup: 'Heavy Duty 45kW Slurry Pump',
-    category: 'Pumps & Compressors',
-    cpses: ['ONGC', 'CIL'],
-    originalCodes: ['MAT-88102', 'CIL-PMP-404'],
-    aiConfidence: 88.5,
-    recommendation: 'Recommend Merge into National Code NM-PMP-002',
-    submittedDate: 'Yesterday, 14:15 PM',
-    status: 'PENDING',
-    evidence: [
-      'Power rating match (45kW 415V 50Hz)',
-      'Slurry duty application match',
-      'UOM compatibility 100% (SET)',
-      'Casing grade evaluation needed'
-    ]
-  },
-  {
-    id: 'app-003',
-    materialGroup: 'Power Transformer 33kV/11kV 5MVA',
-    category: 'Electrical Equipment',
-    cpses: ['NTPC', 'BHEL'],
-    originalCodes: ['ELC-33100', 'BHEL-TR-500'],
-    aiConfidence: 98.4,
-    recommendation: 'Recommend Merge into National Code NM-TRF-004',
-    submittedDate: '24 Aug 2026',
-    status: 'APPROVED',
-    evidence: [
-      'Voltage ratings match (33kV / 11kV)',
-      'MVA capacity match (5 MVA)',
-      'Vector group Dyn11 match',
-      'ONAN oil cooling match'
-    ]
-  }
-];
-
-export const MOCK_AUDIT_LOGS = [
-  { id: 'aud-101', timestamp: '2026-08-27 09:42 AM', user: 'Rajesh Kumar (Senior Officer)', cpse: 'NTPC', action: 'DATA_IMPORT', materialCode: 'materials_ntpc_q3.xlsx', details: 'NTPC imported 4,821 material rows' },
-  { id: 'aud-102', timestamp: '2026-08-27 09:44 AM', user: 'SYSTEM (AI Pipeline)', cpse: 'SYSTEM', action: 'VALIDATION', materialCode: 'BATCH-4821', details: 'Validation completed with 4,766 valid records and 55 warnings' },
-  { id: 'aud-103', timestamp: '2026-08-27 09:46 AM', user: 'SYSTEM (AI Pipeline)', cpse: 'SYSTEM', action: 'AI_MATCHING', materialCode: 'REC-BATCH-99', details: 'AI generated 283 duplicate candidate recommendation clusters' },
-  { id: 'aud-104', timestamp: '2026-08-27 09:50 AM', user: 'Rajesh Kumar (Senior Officer)', cpse: 'ONGC', action: 'OFFICER_REVIEW', materialCode: 'MAT-10231', details: 'Officer reviewed side-by-side comparison with NTPC VLV-77401' },
-];
+};
 
 export const nationalMaterialApi = {
   getNationalMaterials: async (params = {}) => {
-    try {
-      const response = await api.get('/api/national-materials', { params });
-      const normalizedData = (response.data || []).map(item => ({
-        id: item.id,
-        nationalCode: item.nationalCode || item.national_code || 'NM-GEN-001',
-        standardTitle: item.standardTitle || item.description || 'Standardized Equipment',
-        standardSpecification: item.standardSpecification || item.specifications || 'Standard specifications',
-        category: item.category || 'General Equipment',
-        uom: item.uom || item.unit || 'EA',
-        status: item.status ? item.status.toUpperCase() : 'APPROVED',
-        aiConfidence: item.aiConfidence || 98.5,
-        createdDate: item.createdDate || (item.created_at ? item.created_at.split('T')[0] : '2026-08-27'),
-        mappedCPSEs: item.mappedCPSEs || [],
-        approvalHistory: item.approvalHistory || [
-          { officer: 'Rajesh Kumar (Senior Officer)', action: 'APPROVED', date: '2026-08-20', comment: 'Harmonized across CPSE material catalog.' }
-        ]
-      }));
-      return { data: normalizedData };
-    } catch (err) {
-      let list = [...MOCK_NATIONAL_MATERIALS];
-      if (params.search) {
-        const query = params.search.toLowerCase();
-        list = list.filter(m => m.nationalCode.toLowerCase().includes(query) || m.standardTitle.toLowerCase().includes(query));
-      }
-      return { data: list };
-    }
-  },
+    const [r, matRes, cpseRes] = await Promise.all([
+      allNationalMaterials(),
+      api.get('/api/materials'),
+      api.get('/api/cpses')
+    ]);
+    const mats = matRes.data || [];
+    const cpses = cpseRes.data || [];
+    const cpseMap = Object.fromEntries(cpses.map(c => [c.id, c]));
+    const matMap = Object.fromEntries(mats.map(m => [m.id, m]));
 
-  createNationalMaterial: async (data) => {
-    try {
-      return await api.post('/api/national-materials', data);
-    } catch (err) {
-      const newNat = {
-        id: `nat-${Date.now()}`,
-        nationalCode: `NM-${data.category ? data.category.substring(0, 3).toUpperCase() : 'GEN'}-${Math.floor(100 + Math.random() * 900)}`,
-        standardTitle: data.description || 'Standardized Equipment Master',
-        standardSpecification: data.specifications || 'Standard specifications',
-        category: data.category || 'General Equipment',
-        uom: data.unit || 'EA',
-        status: 'APPROVED',
-        aiConfidence: 99.0,
-        createdDate: new Date().toISOString().split('T')[0],
-        mappedCPSEs: [],
-        approvalHistory: []
+    const list = (r.data || []).map((x) => {
+      const mapped = (x.mappings || []).map(mp => {
+          const m = matMap[mp.material_id];
+          return {
+            mappingId: mp.id,
+            materialId: mp.material_id,
+            cpse: m ? (cpseMap[m.cpse_id]?.code || `CPSE-${m.cpse_id}`) : 'CPSE',
+            originalCode: m ? m.material_code : `MAT-${mp.material_id}`,
+            description: m ? m.description : '',
+            mappedDate: mp.created_at?.split('T')[0] || ''
+          };
+        });
+
+      return {
+        id: x.id,
+        nationalCode: x.national_code,
+        standardTitle: x.description,
+        standardSpecification: text(x.specifications),
+        category: x.category || 'General Equipment',
+        uom: x.unit || 'EA',
+        status: (x.status || 'ACTIVE').toUpperCase(),
+        createdDate: x.created_at?.split('T')[0] || '',
+        mappedCPSEs: mapped
       };
-      MOCK_NATIONAL_MATERIALS.unshift(newNat);
-      return { data: newNat };
+    });
+
+    let resList = list;
+    if (params.search) {
+      const q = params.search.toLowerCase();
+      resList = resList.filter(x => x.nationalCode?.toLowerCase().includes(q) || x.standardTitle?.toLowerCase().includes(q));
     }
+    return { data: resList };
   },
 
-  getNationalMaterialById: async (id) => {
-    try {
-      return await api.get(`/api/national-materials/${id}`);
-    } catch (err) {
-      const item = MOCK_NATIONAL_MATERIALS.find(m => m.id === id || m.nationalCode === id) || MOCK_NATIONAL_MATERIALS[0];
-      return { data: item };
+  createNationalMaterial: (d) => api.post('/api/national-materials', {
+    description: d.description,
+    category: d.category || null,
+    unit: d.unit || d.uom || null,
+    specifications: d.specifications && typeof d.specifications === 'object' ? d.specifications : (d.specifications ? { text: d.specifications } : {})
+  }),
+
+  deleteNationalMaterial: (id) => api.delete(`/api/national-materials/${id}`),
+  addMapping: (nationalId, materialId) => api.post(`/api/national-materials/${nationalId}/mappings/${materialId}`),
+  removeMapping: (nationalId, materialId) => api.delete(`/api/national-materials/${nationalId}/mappings/${materialId}`),
+
+  getNationalMaterialById: (id) => api.get(`/api/national-materials/${id}`),
+  getAvailability: (id) => api.get(`/api/national-materials/${id}/availability`),
+  getMaterial360: (id) => api.get(`/api/national-materials/${id}/360`),
+
+  getApprovals: async (status = 'PENDING', page = 1, limit = 25, options = {}) => {
+    const params = {
+      status,
+      page,
+      limit,
+      sort_by: options.sortBy || 'CONFIDENCE_DESC',
+    };
+    if (options.classification && options.classification !== 'ALL') {
+      params.classification = options.classification;
     }
+    const r = await api.get('/api/approvals/paginated', { params });
+    const payload = r.data || {};
+    return {
+      data: (payload.items || []).map(x => {
+        const A = x.material_a || {};
+        const B = x.material_b || {};
+        const p = Number(x.final_score || 0) * (Number(x.final_score || 0) <= 1 ? 100 : 1);
+        return {
+          id: x.id,
+          classification: x.classification,
+          materialGroup: A.description || B.description || 'AI Material Match',
+          category: A.category || B.category || 'General',
+          cpses: [A.cpse_code, B.cpse_code].filter(Boolean),
+          originalCodes: [A.material_code, B.material_code].filter(Boolean),
+          aiConfidence: Number(p.toFixed(1)),
+          recommendation: `${x.classification || 'Unclassified'} — Human review`,
+          submittedDate: x.created_at?.replace('T', ' ').slice(0, 16) || '',
+          status: x.status,
+          evidence: [
+            `Semantic similarity ${Number(((x.semantic_score || 0) * 100).toFixed(1))}%`,
+            `Attribute similarity ${Number(((x.attribute_score || 0) * 100).toFixed(1))}%`,
+            `Fuzzy similarity ${Number(((x.fuzzy_score || 0) * 100).toFixed(1))}%`,
+            x.explanation || 'Human validation required'
+          ],
+          canonicalProposal: x.canonical_proposal || {},
+          conflicts: x.canonical_proposal?.conflicts || []
+        };
+      }),
+      pagination: {
+        page: payload.page || 1,
+        limit: payload.limit || limit,
+        total: payload.total || 0,
+        pages: payload.pages || 0,
+      },
+      counts: payload.counts || { PENDING: 0, APPROVED: 0, REJECTED: 0 },
+      classificationCounts: payload.classification_counts || { EXACT: 0, NEAR_DUPLICATE: 0, FUNCTIONAL_EQUIVALENT: 0 },
+    };
   },
 
-  getApprovals: async () => {
-    try {
-      return await api.get('/api/approvals');
-    } catch (err) {
-      return { data: MOCK_APPROVALS };
-    }
-  },
-
-  approveMapping: async (id) => {
-    try {
-      return await api.post(`/api/approvals/${id}/approve`);
-    } catch (err) {
-      const item = MOCK_APPROVALS.find(a => a.id === id);
-      if (item) {
-        item.status = 'APPROVED';
-        if (item.originalCodes) {
-          item.originalCodes.forEach(code => {
-            const mat = MOCK_MATERIALS.find(m => m.code === code);
-            if (mat) mat.matchStatus = 'Matched';
-          });
-        }
-      }
-      return { data: { success: true, message: 'Mapping approved and registered to National Material Master.' } };
-    }
-  },
-
-  rejectMapping: async (id, reason) => {
-    try {
-      return await api.post(`/api/approvals/${id}/reject`, { reason });
-    } catch (err) {
-      const item = MOCK_APPROVALS.find(a => a.id === id);
-      if (item) item.status = 'REJECTED';
-      return { data: { success: true, message: 'Mapping candidate rejected.' } };
-    }
-  },
+  approveMapping: (id, comment = null, canonicalValues = {}, acknowledgeCriticalConflicts = false, acknowledgeFunctionalEquivalent = false) => api.post(`/api/approvals/${id}/approve`, { comment, canonical_values: canonicalValues, acknowledge_critical_conflicts: acknowledgeCriticalConflicts, acknowledge_functional_equivalent: acknowledgeFunctionalEquivalent }),
+  rejectMapping: (id, reason) => api.post(`/api/approvals/${id}/reject`, { comment: reason || null }),
 
   getAuditTrail: async (filters = {}) => {
-    try {
-      return await api.get('/api/audit-trail', { params: filters });
-    } catch (err) {
-      let list = [...MOCK_AUDIT_LOGS];
-      if (filters.cpse && filters.cpse !== 'ALL') {
-        list = list.filter(a => a.cpse === filters.cpse);
-      }
-      if (filters.search) {
-        const q = filters.search.toLowerCase();
-        list = list.filter(a => a.details.toLowerCase().includes(q) || a.user.toLowerCase().includes(q) || a.materialCode.toLowerCase().includes(q));
-      }
-      return { data: list };
+    const r = await api.get('/api/audit');
+    let l = (r.data || []).map(x => {
+      const details = typeof x.details === 'object' && x.details ? x.details : {};
+      const msg = details.message || (typeof x.details === 'string' ? x.details : `${x.action} event on ${x.entity_type || 'Entity'} #${x.entity_id ?? ''}`);
+      return {
+        id: x.id,
+        timestamp: x.created_at?.replace('T', ' ').slice(0, 19) || '',
+        user: x.user_id ? `User #${x.user_id}` : 'SYSTEM',
+        cpse: details.cpse || 'SYSTEM',
+        action: x.action,
+        materialCode: details.material_code || details.national_code || `${x.entity_type || 'Entity'} #${x.entity_id ?? '-'}`,
+        details: msg
+      };
+    });
+
+    if (filters.cpse && filters.cpse !== 'ALL') {
+      l = l.filter(x => x.cpse === filters.cpse);
     }
-  }
+    if (filters.search) {
+      const q = filters.search.toLowerCase();
+      l = l.filter(x => `${x.details} ${x.action} ${x.materialCode} ${x.user}`.toLowerCase().includes(q));
+    }
+    return { data: l };
+  },
+  verifyAuditTrail: () => api.get('/api/audit/verify'),
 };

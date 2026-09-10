@@ -1,5 +1,4 @@
-import React from 'react';
-import { GitCompare, Globe2, CheckCircle2, ShieldCheck, Sparkles, Building2, Calendar, FileText } from 'lucide-react';
+import { GitCompare, Globe2, Sparkles, FileText } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { getCPSEBadgeColor, getStatusBadgeColor, formatConfidence } from '../../utils/formatters';

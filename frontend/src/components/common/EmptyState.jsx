@@ -1,5 +1,4 @@
-import React from 'react';
-import { Database, Search, CheckCircle2, FileSpreadsheet } from 'lucide-react';
+import { Database } from 'lucide-react';
 import { Button } from './Button';
 
 export const EmptyState = ({

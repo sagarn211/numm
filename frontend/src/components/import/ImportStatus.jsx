@@ -1,19 +1,27 @@
-import React from 'react';
 import { UploadCloud, CheckCircle2, Cpu, Database, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '../common/Button';
 
-export const ImportStatus = ({ progressData, onComplete }) => {
+export const ImportStatus = ({ progressData, onComplete, importType = 'MATERIAL' }) => {
   if (!progressData) return null;
 
-  const stages = [
+  const materialStages = [
     { key: 'UPLOAD', label: 'UPLOAD', icon: UploadCloud },
     { key: 'VALIDATE', label: 'VALIDATE', icon: CheckCircle2 },
     { key: 'NORMALIZE', label: 'NORMALIZE', icon: Cpu },
     { key: 'STORE', label: 'STORE', icon: Database },
     { key: 'AI MATCH', label: 'AI MATCH', icon: Sparkles }
   ];
+  const inventoryStages = [
+    { key: 'UPLOAD', label: 'UPLOAD', icon: UploadCloud },
+    { key: 'VALIDATE', label: 'VALIDATE', icon: CheckCircle2 },
+    { key: 'RESOLVE', label: 'RESOLVE', icon: Cpu },
+    { key: 'STORE', label: 'STORE', icon: Database },
+    { key: 'COMPLETE', label: 'COMPLETE', icon: CheckCircle2 },
+  ];
+  const stages = importType === 'INVENTORY' ? inventoryStages : materialStages;
+  const terminal = ['COMPLETED', 'COMPLETED_WITH_ERRORS', 'COMPLETED_WITH_AI_ERROR', 'FAILED', 'CANCELLED'].includes(progressData.status);
 
-  const currentStageIndex = 2; // e.g. NORMALIZE is active at 82%
+  const currentStageIndex = terminal ? stages.length : progressData.progress > 0 ? 3 : 1;
 
   return (
     <div className="bg-gradient-to-br from-[#0B1220] via-[#0F172A] to-[#1E1B4B] rounded-2xl p-6 border border-slate-800 text-white shadow-xl space-y-6 animate-fade-in">
@@ -24,7 +32,7 @@ export const ImportStatus = ({ progressData, onComplete }) => {
           <span className="text-[10px] font-extrabold font-mono uppercase text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-full border border-cyan-500/30">
             LIVE DATA PIPELINE
           </span>
-          <h3 className="text-lg font-extrabold text-white tracking-tight mt-1.5">Processing CPSE Master Dataset</h3>
+          <h3 className="text-lg font-extrabold text-white tracking-tight mt-1.5">Processing CPSE {importType === 'INVENTORY' ? 'Inventory Stock' : 'Master'} Dataset</h3>
         </div>
         <div className="text-right">
           <span className="text-2xl font-black font-mono text-cyan-400">{progressData.progress}%</span>
@@ -73,14 +81,14 @@ export const ImportStatus = ({ progressData, onComplete }) => {
       {/* Active Stage Detail Box */}
       <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between text-xs">
         <div className="flex items-center gap-3">
-          <Loader2 className="w-4 h-4 text-cyan-400 animate-spin shrink-0" />
+          {terminal ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> : <Loader2 className="w-4 h-4 text-cyan-400 animate-spin shrink-0" />}
           <div>
             <span className="text-[10px] font-bold text-slate-400 uppercase font-mono">Current Activity</span>
             <p className="text-slate-200 font-semibold mt-0.5">{progressData.stageMessage}</p>
           </div>
         </div>
         <Button variant="primary" size="sm" onClick={onComplete}>
-          Jump to Recommendations →
+          {importType === 'INVENTORY' ? 'Open Inventory' : 'Jump to Recommendations'} →
         </Button>
       </div>
 
