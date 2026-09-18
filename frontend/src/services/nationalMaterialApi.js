@@ -107,7 +107,9 @@ export const nationalMaterialApi = {
             x.explanation || 'Human validation required'
           ],
           canonicalProposal: x.canonical_proposal || {},
-          conflicts: x.canonical_proposal?.conflicts || []
+          conflicts: x.canonical_proposal?.conflicts || [],
+          approvalBlocked: Boolean(x.approval_blocked),
+          approvalBlockReason: x.approval_block_reason || null,
         };
       }),
       pagination: {

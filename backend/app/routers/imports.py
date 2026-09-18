@@ -46,6 +46,8 @@ def preview(
 ):
     ensure_cpse_access(current_user, cpse_id)
     if import_type.upper() == "INVENTORY":
+        if (file.filename or "").lower().endswith(".zip"):
+            raise HTTPException(400, "ZIP archives are supported only for material master imports")
         return preview_inventory_import(
             db, file, cpse_id, conflict_policy, current_user.id,
         )

@@ -68,6 +68,8 @@ def approve_match(
     existing_national_ids = {item.national_material_id for item in existing_mappings}
     if len(existing_national_ids) > 1:
         raise HTTPException(409, "Source materials are already mapped to different National Material Codes")
+    if existing_national_ids:
+        raise HTTPException(409, "Source materials are already mapped to a National Material Code")
 
     previous = match.status
     match.status = "APPROVED"
@@ -83,21 +85,18 @@ def approve_match(
     ))
 
     created_national = False
-    if existing_national_ids:
-        national_id = existing_national_ids.pop()
-    else:
-        national, created_national = create_national_material(
-            db,
-            proposal["description"], proposal["category"], proposal["unit"],
-            proposal["specifications"], proposal.get("subcategory"),
-            {
-                "source_material_ids": proposal["source_material_ids"],
-                "source_records": proposal["source_records"],
-                "conflicts": proposal["conflicts"],
-            },
-            actor_id=None, commit=False, return_created=True,
-        )
-        national_id = national.id
+    national, created_national = create_national_material(
+        db,
+        proposal["description"], proposal["category"], proposal["unit"],
+        proposal["specifications"], proposal.get("subcategory"),
+        {
+            "source_material_ids": proposal["source_material_ids"],
+            "source_records": proposal["source_records"],
+            "conflicts": proposal["conflicts"],
+        },
+        actor_id=None, commit=False, return_created=True,
+    )
+    national_id = national.id
 
     mapping_type = "AUTO_EXACT" if automated else match.classification
     map_material(db, match.material_a_id, national_id, mapping_type, reviewer_id)

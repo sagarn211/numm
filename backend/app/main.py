@@ -3,7 +3,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config.settings import settings
 from app.routers import procurement
+from app.routers import clusters
 from app.routers import mapping_history
+from app.routers import visual_search
 import app.models
 
 from app.middleware.error_middleware import error_middleware
@@ -40,11 +42,12 @@ app.middleware("http")(error_middleware)
 
 for router in [
     procurement.router,
+    clusters.router,
     mapping_history.router,
     auth.router, cpses.router, materials.router, imports.router, matching.router,
     approvals.router, national_materials.router, inventory.router, requests.router,
     audit.router, dashboard.router, integrations.router, data_quality.router,
-    demand.router, exports.router, users.router,
+    demand.router, exports.router, users.router, visual_search.router,
 ]:
     app.include_router(router)
 

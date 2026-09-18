@@ -39,3 +39,4 @@ class Material(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     cpse = relationship("CPSE", back_populates="materials")
+    images = relationship("MaterialImage", back_populates="material", cascade="all, delete-orphan")

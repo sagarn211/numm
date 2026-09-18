@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, GitBranch, History, PackageSearch, ShieldCheck } from 'lucide-react';
 import { nationalMaterialApi } from '../services/nationalMaterialApi';
+import { priceIntelligenceApi } from '../services/priceIntelligenceApi';
 import { Loading } from '../components/common/Loading';
 
 const Section = ({ title, children }) => <section className="rounded-xl border border-slate-200 bg-white p-4"><h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-700">{title}</h3>{children}</section>;
@@ -11,10 +12,12 @@ export const NationalMaterial360 = () => {
   const { id } = useParams();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [price, setPrice] = useState(null);
   useEffect(() => {
     let active = true;
     nationalMaterialApi.getMaterial360(id).then(response => { if (active) setData(response.data); })
       .catch(err => { if (active) setError(err?.response?.data?.detail || err.message || 'Unable to load National Material 360.'); });
+    priceIntelligenceApi.detail(id).then(response => { if (active) setPrice(response.data); }).catch(() => {});
     return () => { active = false; };
   }, [id]);
   if (error) return <div className="space-y-4"><Link to="/national-materials" className="text-xs text-blue-700">Back to National Materials</Link><div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div></div>;
@@ -28,6 +31,9 @@ export const NationalMaterial360 = () => {
       <Section title="National stock">{data.stock_summary.length ? data.stock_summary.map(row => <div key={row.uom} className="grid grid-cols-3 gap-2 text-center text-xs"><div><strong>{row.available}</strong><br/>Available</div><div><strong>{row.reserved}</strong><br/>Reserved</div><div><strong>{row.ready_to_use}</strong><br/>Ready ({row.uom})</div></div>) : <Empty>No inventory records.</Empty>}</Section>
       <Section title="Procurement recommendation">{data.procurement_opportunity ? <><p className="text-2xl font-bold text-blue-800">{data.procurement_opportunity.opportunity_score}/100</p><p className="mt-2 text-xs">{data.procurement_opportunity.recommendation}</p></> : <Empty>No evidence-backed opportunity for the current period.</Empty>}</Section>
     </div>
+    <Section title="Procurement Price Intelligence">
+      {price?.latest_weighted_avg != null ? <div className="grid gap-3 text-xs md:grid-cols-4"><div><strong>Latest weighted price</strong><p className="mt-1 text-lg">{price.latest_weighted_avg} {price.currency} / {price.uom}</p></div><div><strong>Historical movement</strong><p className="mt-1 text-lg">{price.change_percent == null ? '—' : `${price.direction === 'UP' ? '▲' : price.direction === 'DOWN' ? '▼' : '—'} ${price.change_percent}%`}</p></div><div><strong>Cross-CPSE price spread</strong><p className="mt-1 text-lg">{price.price_spread_percent == null ? '—' : `${price.price_spread_percent}%`}</p></div><div><strong>Purchase volume</strong><p className="mt-1 text-lg">{price.total_quantity} {price.uom}</p></div></div> : <Empty>Procurement price intelligence becomes available after compatible quantity and unit-price history is imported.</Empty>}
+    </Section>
     <Section title={`Legacy CPSE mappings (${data.legacy_mappings.length})`}>
       {data.legacy_mappings.length ? <div className="grid gap-2 md:grid-cols-2">{data.legacy_mappings.map(row => <div key={row.id} className="rounded-lg border bg-slate-50 p-3 text-xs"><strong>{row.cpse_code} · {row.material.material_code}</strong><p>{row.material.description}</p><span className="text-slate-500">{row.mapping_type}</span></div>)}</div> : <Empty>No legacy mappings.</Empty>}
     </Section>

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.config.database import get_db
 from app.models.audit_log import AuditLog
 from app.models.material_mapping import MaterialMapping
-from app.services.mapping_service import map_material
+from app.services.mapping_service import map_material, reassign_material_mapping
 from app.services.audit_service import write_audit
 from app.utils.rbac import require_permission
 from app.models.material import Material
@@ -51,7 +51,11 @@ def migrate(payload: MigrationPlan, db: Session = Depends(get_db), user=Depends(
         validate_members(db, target, incoming)
     if payload.confirm:
         for row in payload.rows:
-            map_material(db, row.material_id, row.national_material_id, "MIGRATION", user.id)
+            current = db.query(MaterialMapping).filter(MaterialMapping.material_id == row.material_id).first()
+            if current:
+                reassign_material_mapping(db, row.material_id, row.national_material_id, user.id, payload.reason)
+            else:
+                map_material(db, row.material_id, row.national_material_id, "MIGRATION", user.id)
         write_audit(db, "LEGACY_MAPPING_MIGRATION", "MaterialMapping", None, user.id,
                     {"reason": payload.reason, "changes": preview}, commit=False)
         db.commit()
@@ -79,7 +83,7 @@ def restore(event_id: int, payload: RestoreRequest, db: Session = Depends(get_db
     newer = history(before["material_id"], db, user)
     if newer and newer[0].id != event.id:
         raise HTTPException(409, "Only the latest mapping change can be restored")
-    mapping = map_material(db, before["material_id"], before["national_material_id"], "RESTORED", user.id)
+    mapping = reassign_material_mapping(db, before["material_id"], before["national_material_id"], user.id, payload.reason)
     write_audit(db, "MAPPING_RESTORE_REQUESTED", "Material", before["material_id"], user.id,
                 {"event_id": event.id, "reason": payload.reason}, commit=False)
     db.commit(); db.refresh(mapping)

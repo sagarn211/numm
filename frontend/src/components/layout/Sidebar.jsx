@@ -21,9 +21,9 @@ import {
   TrendingUp,
   Network,
   FlaskConical
+  ,Image
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { nationalMaterialApi } from '../../services/nationalMaterialApi';
 import { api } from '../../services/api';
 import { hasPermission } from '../../utils/permissions';
 
@@ -44,8 +44,8 @@ export const Sidebar = ({ collapsed, onToggle }) => {
     const fetchPending = async () => {
       if (!hasPermission(user, 'approval.read')) return;
       try {
-        const res = await nationalMaterialApi.getApprovals();
-        setPendingCount(res.counts?.PENDING || 0);
+        const res = await api.get('/api/clusters/approval-counts');
+        setPendingCount(res.data?.actionable_total || 0);
       } catch {
         setPendingCount(0);
       }
@@ -61,6 +61,7 @@ export const Sidebar = ({ collapsed, onToggle }) => {
     { label: 'Duplicate Clusters', path: '/duplicate-clusters', icon: Network, permission: 'approval.read' },
     { label: 'Model Evaluation', path: '/model-evaluation', icon: FlaskConical, permission: 'matching.search' },
     { label: 'Material Comparison', path: '/comparison', icon: GitCompare, permission: 'material.read' },
+    { label: 'Visual Material Search', path: '/visual-search', icon: Image, permission: 'material.read' },
     { label: 'National Materials', path: '/national-materials', icon: Globe2, permission: 'national.read' },
     { label: 'Approvals', path: '/approvals', icon: CheckSquare, permission: 'approval.read', badge: pendingCount > 0 ? String(pendingCount) : null },
     { label: 'Inventory', path: '/inventory', icon: Boxes, permission: 'inventory.read' },

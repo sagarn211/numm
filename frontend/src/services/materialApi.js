@@ -8,7 +8,7 @@ export const normalizeMaterial = (m,c={}) => ({
   uom:m.unit || 'EA', matchStatus:m.matching_status || 'NOT_PROCESSED', nationalCode:m.national_code || null,
   confidence:m.classification_confidence == null ? null : Number(m.classification_confidence) * 100, createdDate:m.created_at?.split('T')[0] || '', lastUpdated:m.updated_at?.split('T')[0] || '',
   grade:m.specifications?.grade || m.specifications?.material_grade || '-', size:m.specifications?.size || m.specifications?.dimensions || '-',
-  manufacturer:m.manufacturer || '-', model:m.model || null, source:m.source, status:m.status,
+  manufacturer:m.manufacturer || '-', model:m.model || null, source:m.source, status:m.status, primaryImageUrl:m.primary_image_url || null,
 });
 
 const firstDefined = (...values) => values.find((value) => value !== undefined);

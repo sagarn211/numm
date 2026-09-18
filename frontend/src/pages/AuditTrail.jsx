@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Activity, Search, User, Clock, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Activity, Download, FileText, Search, User, Clock, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { nationalMaterialApi } from '../services/nationalMaterialApi';
 import { Loading } from '../components/common/Loading';
 import { EmptyState } from '../components/common/EmptyState';
 import { getCPSEBadgeColor } from '../utils/formatters';
+import { exportApi } from '../services/exportApi';
+import { Button } from '../components/common/Button';
 
 export const AuditTrail = () => {
   const [logs, setLogs] = useState([]);
@@ -12,6 +14,27 @@ export const AuditTrail = () => {
   const [search, setSearch] = useState('');
   const [integrity, setIntegrity] = useState(null);
   const [error, setError] = useState('');
+  const [exporting, setExporting] = useState('');
+
+  const downloadReport = async format => {
+    setExporting(format);
+    setError('');
+    try {
+      const response = await exportApi.governanceReport(format);
+      const url = URL.createObjectURL(new Blob([response.data], { type: response.headers['content-type'] }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `numm_governance_report.${format === 'docx' ? 'docx' : 'pdf'}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err?.response?.data?.detail || 'Unable to generate the governance report.');
+    } finally {
+      setExporting('');
+    }
+  };
 
   const loadAuditLogs = useCallback(async () => {
     setLoading(true);
@@ -44,6 +67,10 @@ export const AuditTrail = () => {
         <div>
           <h2 className="text-xl font-bold text-slate-900 tracking-tight">Audit & Governance Trail</h2>
           <p className="text-xs text-slate-500 mt-0.5">Immutable record of all system events, data ingestions, AI recommendations, and officer approval actions</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="secondary" icon={FileText} loading={exporting === 'docx'} onClick={() => downloadReport('docx')}>Export Word</Button>
+          <Button size="sm" icon={Download} loading={exporting === 'pdf'} onClick={() => downloadReport('pdf')}>Export PDF</Button>
         </div>
       </div>
 

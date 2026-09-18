@@ -3,7 +3,7 @@ import csv
 import re
 from io import StringIO
 from collections import defaultdict
-from fastapi import APIRouter, Depends, HTTPException, File, Form, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, File, Form, UploadFile, Query
 from pydantic import BaseModel, Field, ConfigDict, ValidationError
 from sqlalchemy.orm import Session
 from app.config.database import get_db
@@ -16,6 +16,7 @@ from app.utils.rbac import require_permission, ensure_cpse_access, is_system_adm
 from app.services.cleaning_service import normalize_uom
 from app.services.audit_service import write_audit
 from app.services.procurement_intelligence_service import procurement_opportunities, reuse_before_buy
+from app.services.price_intelligence_service import material_price_intelligence, list_materials, highlights
 
 router = APIRouter(prefix="/api/procurement", tags=["Procurement history"])
 
@@ -120,6 +121,59 @@ def analytics(db: Session = Depends(get_db), user=Depends(require_permission("de
              "suppliers": sorted(value["suppliers"]), "participating_cpses": sorted(value["cpses"]),
              "average_lead_time_days": sum(value["lead_times"]) / len(value["lead_times"]) if value["lead_times"] else None}
             for key, value in grouped.items()]
+
+
+def _price_scope(user):
+    """Keep price analytics within the application's existing CPSE visibility."""
+    return None if is_system_admin(user) else user.cpse_id
+
+
+@router.get("/price-intelligence/summary")
+def price_intelligence_summary(db: Session = Depends(get_db), user=Depends(require_permission("demand.read"))):
+    result = list_materials(db, _price_scope(user), page=1, limit=1)
+    return {"materials_with_history": result["total"], "default_material": result["items"][0] if result["items"] else None}
+
+
+@router.get("/price-intelligence/materials")
+def price_intelligence_materials(search: str | None = Query(None, max_length=200), page: int = Query(1, ge=1),
+                                limit: int = Query(25, ge=1, le=100), db: Session = Depends(get_db),
+                                user=Depends(require_permission("demand.read"))):
+    return list_materials(db, _price_scope(user), search, page, limit)
+
+
+@router.get("/price-intelligence/highlights")
+def price_intelligence_highlights(limit: int = Query(5, ge=1, le=20), db: Session = Depends(get_db),
+                                  user=Depends(require_permission("demand.read"))):
+    return highlights(db, _price_scope(user), limit)
+
+
+@router.get("/price-intelligence/{national_material_id}")
+def price_intelligence_detail(national_material_id: int, uom: str | None = None, currency: str | None = None,
+                             range: str | None = Query(None, pattern=r"^(3m|6m|12m|all)$"), db: Session = Depends(get_db),
+                             user=Depends(require_permission("demand.read"))):
+    months = {"3m": 3, "6m": 6, "12m": 12}.get(range)
+    result = material_price_intelligence(db, national_material_id, _price_scope(user), uom, currency, months)
+    if not result:
+        raise HTTPException(404, "National Material not found")
+    return result
+
+
+@router.get("/price-intelligence/{national_material_id}/trend")
+def price_intelligence_trend(national_material_id: int, uom: str | None = None, currency: str | None = None,
+                             range: str = Query("12m", pattern=r"^(3m|6m|12m|all)$"), db: Session = Depends(get_db),
+                             user=Depends(require_permission("demand.read"))):
+    months = {"3m": 3, "6m": 6, "12m": 12}.get(range)
+    result = material_price_intelligence(db, national_material_id, _price_scope(user), uom, currency, months)
+    if not result: raise HTTPException(404, "National Material not found")
+    return {"national_material_id": national_material_id, "uom": result["uom"], "currency": result["currency"], "series": result["series"], "data_quality": result["data_quality"]}
+
+
+@router.get("/price-intelligence/{national_material_id}/cpse-comparison")
+def price_intelligence_cpse_comparison(national_material_id: int, uom: str | None = None, currency: str | None = None,
+                                       db: Session = Depends(get_db), user=Depends(require_permission("demand.read"))):
+    result = material_price_intelligence(db, national_material_id, _price_scope(user), uom, currency)
+    if not result: raise HTTPException(404, "National Material not found")
+    return {"national_material_id": national_material_id, "uom": result["uom"], "currency": result["currency"], "weighted_average": result["latest_weighted_avg"], "price_spread_percent": result["price_spread_percent"], "items": result["cpse_comparison"], "data_quality": result["data_quality"]}
 
 
 @router.get("/opportunities")

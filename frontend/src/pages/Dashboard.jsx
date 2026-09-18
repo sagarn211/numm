@@ -1,19 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
+import {
   Building2, 
   Package, 
   Copy, 
   Sparkles, 
   Globe2, 
   Download,
-  Network,
   Cpu,
   CheckCircle2,
   AlertTriangle,
-  Award,
   Factory,
-  Cog,
   Info
 } from 'lucide-react';
 import { dashboardApi } from '../services/dashboardApi';
@@ -21,28 +18,25 @@ import { StatCard } from '../components/dashboard/StatCard';
 import { SectorCard } from '../components/dashboard/SectorCard';
 import { RecentActivity } from '../components/dashboard/RecentActivity';
 import { Loading } from '../components/common/Loading';
+import { ProcurementPriceIntelligence } from '../components/dashboard/ProcurementPriceIntelligence';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
-  const [networkData, setNetworkData] = useState(null);
   const [sectors, setSectors] = useState([]);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedNodeIndex, setSelectedNodeIndex] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsRes, netRes, secRes, actRes] = await Promise.all([
+        const [statsRes, secRes, actRes] = await Promise.all([
           dashboardApi.getStats(),
-          dashboardApi.getMaterialNetwork(),
           dashboardApi.getSectorStats(),
           dashboardApi.getRecentActivity()
         ]);
         setStats(statsRes.data);
-        setNetworkData(netRes.data);
         setSectors(secRes.data);
         setActivity(actRes.data);
       } catch (err) {
@@ -59,8 +53,6 @@ export const Dashboard = () => {
     return <Loading type="ai" text="Fetching National Material Master Live Intelligence..." />;
   }
 
-  const nodes = networkData?.nationalNodes || [];
-  const activeNode = nodes[selectedNodeIndex] || nodes[0] || null;
 
   const totalMaterialsCount = stats?.totalMaterials?.value ?? 0;
   const mappedCount = stats?.aiMatches?.value ?? 0;
@@ -164,105 +156,11 @@ export const Dashboard = () => {
       </div>
 
       {/* Bento Grid Layout for Main Content */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-12 items-start gap-6">
         
-        {/* Central Visualization: Material Network Convergence (8 cols) */}
+        {/* Central Visualization: historical procurement intelligence (8 cols) */}
         <div className="xl:col-span-8 bg-[#fffaf5] border border-[#e7dccd] rounded-2xl p-6 relative overflow-hidden flex flex-col shadow-[0_1px_0_rgba(59,44,35,0.06)]">
-          <div className="flex justify-between items-center mb-6 z-10">
-            <h3 className="text-lg font-bold text-[#2f261f] flex items-center gap-2">
-              <Network className="w-5 h-5 text-[#6c4738]" />
-              Material Network Convergence
-            </h3>
-            {nodes.length > 1 && (
-              <div className="flex gap-1 overflow-x-auto max-w-sm">
-                {nodes.map((n, idx) => (
-                  <button
-                    key={n.id}
-                    onClick={() => setSelectedNodeIndex(idx)}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-colors ${
-                      selectedNodeIndex === idx
-                        ? 'bg-[#8b634e] text-white'
-                        : 'bg-[#f2e8de] text-[#5c4d45] hover:bg-[#eadccb]'
-                    }`}
-                  >
-                    {n.id}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Network Viz Canvas */}
-          {activeNode ? (
-            <div className="flex-1 min-h-[380px] relative rounded-xl border border-[#eadfce] bg-[#f7f1ea]/80 flex items-center justify-center p-6 sm:p-8">
-              {/* Connecting SVG Lines */}
-              <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
-                <path className="network-line" d="M 100,80 C 220,80 220,200 400,200" fill="none" opacity="0.6" stroke="#94a3b8" strokeWidth="1.5"></path>
-                <path className="network-line" d="M 100,160 C 220,160 220,200 400,200" fill="none" opacity="0.6" stroke="#94a3b8" strokeWidth="1.5"></path>
-                <path className="network-line" d="M 100,240 C 220,240 220,200 400,200" fill="none" opacity="0.6" stroke="#94a3b8" strokeWidth="1.5"></path>
-                <path className="network-line" d="M 100,320 C 220,320 220,200 400,200" fill="none" opacity="0.6" stroke="#94a3b8" strokeWidth="1.5"></path>
-                <path className="network-line" d="M 400,200 L 560,200" fill="none" stroke="#4f46e5" strokeDasharray="5,5" strokeWidth="2"></path>
-              </svg>
-
-              <div className="w-full flex flex-col md:flex-row justify-between items-center gap-6 relative z-10">
-
-                {/* Left: CPSE Nodes */}
-                <div className="flex flex-col gap-3 w-full md:w-1/4">
-                  {(activeNode.cpses || []).length > 0 ? (
-                    activeNode.cpses.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="bg-[#fffdfb] border border-[#e9dfd2] p-3 rounded-lg shadow-[0_1px_0_rgba(59,44,35,0.06)] text-center transform transition hover:scale-105 hover:border-[#8b634e] hover:shadow-md cursor-pointer"
-                      >
-                        <span className="text-xs font-bold text-[#2f261f] block">{item.cpse}</span>
-                        <p className="font-mono text-[10px] text-[#6c4738] mt-0.5">{item.code}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="bg-white/80 border border-dashed border-slate-300 p-4 rounded-lg text-center text-xs text-slate-500">
-                      No CPSE items linked to this code yet
-                    </div>
-                  )}
-                </div>
-
-                {/* Middle: Material Group Node */}
-                <div className="w-full md:w-1/3 flex justify-center">
-                  <div className="bg-[#f2e8de] border border-[#d8c2ad] p-5 rounded-2xl shadow-[0_1px_0_rgba(59,44,35,0.05)] text-center relative w-full max-w-[220px]">
-                    <div className="absolute -top-3 -right-2 bg-[#e6d6c1] text-[#5f4b40] text-[10px] font-bold px-2 py-0.5 rounded-full border border-[#d7c0a2] flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" /> Live Standard
-                    </div>
-                    <Cog className="w-8 h-8 text-[#7a6d63] mx-auto mb-1 animate-spin-slow" />
-                    <span className="block text-xs font-bold text-[#2f261f] line-clamp-1">{activeNode.category}</span>
-                    <p className="font-mono text-[11px] text-[#655c54] mt-1">{(activeNode.cpses || []).length} Mapped Entities</p>
-                  </div>
-                </div>
-
-                {/* Right: National Code Node */}
-                <div className="w-full md:w-1/3 flex justify-end">
-                  <div className="bg-[#fffaf5] border-2 border-[#6b8d63] p-5 rounded-2xl shadow-[0_8px_24px_rgba(91,91,72,0.12)] text-center relative overflow-hidden group hover:border-[#577154] transition-all cursor-pointer w-full max-w-[260px]">
-                    <div className="absolute inset-0 bg-[#edf3ea]/60 group-hover:opacity-100 transition-opacity"></div>
-                    <div className="relative z-10">
-                      <div className="bg-[#e3ede0] w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 shadow-2xs">
-                        <Award className="w-6 h-6 text-[#4c6b4b]" />
-                      </div>
-                      <span className="block text-[10px] font-bold text-[#4c6b4b] tracking-widest uppercase mb-0.5">National Master Code</span>
-                      <span className="block font-mono text-xl font-black text-[#2f261f]">{activeNode.id}</span>
-                      <p className="text-xs font-medium text-[#5d5049] mt-2 leading-tight line-clamp-2">
-                        {activeNode.title || activeNode.standardDescription}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          ) : (
-            <div className="flex-1 min-h-[300px] flex flex-col items-center justify-center text-slate-400 border border-dashed rounded-xl p-8">
-              <Network className="w-10 h-10 mb-2 opacity-40" />
-              <p className="text-sm font-semibold">No National Material Codes created yet.</p>
-              <p className="text-xs text-slate-500 mt-1">Create National Codes or approve AI matches to visualize network convergence.</p>
-            </div>
-          )}
+          <ProcurementPriceIntelligence />
         </div>
 
         {/* Right Sidebar: AI Insights Engine & Recent Activity (4 cols) */}

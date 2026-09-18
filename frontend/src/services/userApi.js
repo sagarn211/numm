@@ -6,4 +6,10 @@ export const userApi = {
     role,
     cpse_id: cpseId ? Number(cpseId) : null,
   }),
+  approve: (id, role, cpseId, comment = '') => api.post(`/api/users/${id}/approve`, {
+    role,
+    cpse_id: cpseId ? Number(cpseId) : null,
+    comment,
+  }),
+  reject: (id, comment = '') => api.post(`/api/users/${id}/reject`, { comment }),
 };

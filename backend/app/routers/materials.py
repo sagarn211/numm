@@ -12,6 +12,7 @@ from app.models.material_mapping import MaterialMapping
 from app.models.national_material import NationalMaterial
 from app.models.material_match import MaterialMatch
 from app.models.inventory import Inventory
+from app.models.material_image import MaterialImage
 from app.models.demand_record import DemandRecord
 from app.utils.rbac import ensure_cpse_access, is_system_admin, require_permission
 from app.services.audit_service import snapshot_model, write_audit
@@ -28,6 +29,11 @@ def material_data(material, db: Session):
         MaterialMapping, MaterialMapping.national_material_id == NationalMaterial.id
     ).filter(MaterialMapping.material_id == material.id).all() if code]
     data["national_code"] = ", ".join(codes) if codes else None
+    primary = db.query(MaterialImage.image_url).filter(
+        MaterialImage.material_id == material.id, MaterialImage.is_primary.is_(True),
+        MaterialImage.verification_status == "VERIFIED",
+    ).first()
+    data["primary_image_url"] = primary[0] if primary else None
     return data
 
 @router.post("")

@@ -24,6 +24,7 @@ const ProcurementOpportunities = lazy(() => import('./pages/ProcurementOpportuni
 const NationalMaterial360 = lazy(() => import('./pages/NationalMaterial360').then(module => ({ default: module.NationalMaterial360 })));
 const DuplicateClusters = lazy(() => import('./pages/DuplicateClusters').then(module => ({ default: module.DuplicateClusters })));
 const ModelEvaluation = lazy(() => import('./pages/ModelEvaluation').then(module => ({ default: module.ModelEvaluation })));
+const VisualMaterialSearch = lazy(() => import('./pages/VisualMaterialSearch').then(module => ({ default: module.VisualMaterialSearch })));
 
 const PageFallback = () => (
   <div className="min-h-[40vh] grid place-items-center text-slate-500 text-sm" role="status">
@@ -66,6 +67,7 @@ function App() {
             <Route path="duplicate-clusters" element={<PermissionRoute permission="approval.read"><DuplicateClusters /></PermissionRoute>} />
             <Route path="model-evaluation" element={<PermissionRoute permission="matching.search"><ModelEvaluation /></PermissionRoute>} />
             <Route path="comparison" element={<PermissionRoute permission="material.read"><MaterialComparison /></PermissionRoute>} />
+            <Route path="visual-search" element={<PermissionRoute permission="material.read"><VisualMaterialSearch /></PermissionRoute>} />
             <Route path="national-materials" element={<PermissionRoute permission="national.read"><NationalMaterials /></PermissionRoute>} />
             <Route path="national-materials/:id" element={<PermissionRoute permission="national.read"><NationalMaterial360 /></PermissionRoute>} />
             <Route path="approvals" element={<PermissionRoute permission="approval.read"><Approvals /></PermissionRoute>} />

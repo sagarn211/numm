@@ -47,6 +47,12 @@ class Settings:
     IMPORT_CHUNK_SIZE = int(os.getenv("IMPORT_CHUNK_SIZE", "1000"))
     IMPORT_CLASSIFICATION_WORKERS = int(os.getenv("IMPORT_CLASSIFICATION_WORKERS", "4"))
     IMPORT_MAX_RETRIES = int(os.getenv("IMPORT_MAX_RETRIES", "3"))
+    IMAGE_STORAGE_PROVIDER = os.getenv("IMAGE_STORAGE_PROVIDER", "imagekit").lower()
+    IMAGEKIT_PUBLIC_KEY = os.getenv("IMAGEKIT_PUBLIC_KEY", "")
+    IMAGEKIT_PRIVATE_KEY = _secret("IMAGEKIT_PRIVATE_KEY")
+    IMAGEKIT_URL_ENDPOINT = os.getenv("IMAGEKIT_URL_ENDPOINT", "").rstrip("/")
+    MAX_IMAGE_FILE_BYTES = int(os.getenv("MAX_IMAGE_FILE_BYTES", str(10 * 1024 * 1024)))
+    MAX_IMAGE_PIXELS = int(os.getenv("MAX_IMAGE_PIXELS", "40000000"))
 
 
 settings = Settings()

@@ -4,7 +4,6 @@ import { Layers, ShieldCheck, Lock, Mail, ArrowRight, Sparkles, User as UserIcon
 import { useAuth } from '../hooks/useAuth';
 import { authApi } from '../services/authApi';
 import { Button } from '../components/common/Button';
-import { cpseApi } from '../services/cpseApi';
 
 export const Login = () => {
   const navigate = useNavigate();
@@ -24,7 +23,7 @@ export const Login = () => {
   });
 
   useEffect(() => {
-    cpseApi.getAll().then(response => setCpses(response.data || [])).catch(() => setCpses([]));
+    authApi.getRegistrationCpses().then(response => setCpses(response.data || [])).catch(() => setCpses([]));
   }, []);
 
   const handleSubmit = async (e) => {
@@ -32,18 +31,16 @@ export const Login = () => {
     setError('');
     if (isRegister) {
       try {
-        await authApi.register({
+        const response = await authApi.register({
           name,
           email,
           password,
           role: 'REQUESTING_OFFICER',
           cpse_id: Number(cpseId),
         });
-        setRegSuccess('Account created successfully! Signing in...');
-        setTimeout(async () => {
-          await login(email, password);
-          navigate('/dashboard');
-        }, 1000);
+        setRegSuccess(response.data?.message || 'Registration submitted. Wait for administrator approval before signing in.');
+        setPassword('');
+        setIsRegister(false);
       } catch (err) {
         setError(err?.response?.data?.detail || err.message || 'Registration failed');
       }
@@ -142,10 +139,10 @@ export const Login = () => {
 
           <div className="mb-4">
             <h3 className="text-xl font-bold text-[#2f261f] tracking-tight">
-              {isRegister ? 'Create Officer Account' : 'Enterprise Access'}
+              {isRegister ? 'Request Officer Account' : 'Enterprise Access'}
             </h3>
             <p className="text-xs text-[#685d54] mt-1">
-              {isRegister ? 'Register your CPSE officer credentials' : 'Sign in with your authorized CPSE credentials'}
+              {isRegister ? 'Submit your account request for system-administrator approval' : 'Sign in with your authorized CPSE credentials'}
             </p>
           </div>
 
@@ -242,7 +239,7 @@ export const Login = () => {
               className="w-full mt-2"
               icon={ArrowRight}
             >
-              {isRegister ? 'Complete Registration' : 'Sign In to Command Center'}
+              {isRegister ? 'Submit Account Request' : 'Sign In to Command Center'}
             </Button>
           </form>
 

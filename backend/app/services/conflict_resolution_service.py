@@ -40,6 +40,25 @@ def canonical_specs(material):
                 result[key] = f"CONFLICT: {result[key]} / {value}"
             else:
                 result.setdefault(key, value)
+    # Material type is engineering evidence even when the import supplied no
+    # structured specifications.  Do not let "mild", "carbon", "stainless" or
+    # "high tensile" records collapse into one identity merely because those
+    # values were only present in their source descriptions.
+    material_types = (
+        ("STAINLESS STEEL", r"\bSTAINLESS\s+STEEL\b|\bSS\s*\d{3}\b"),
+        ("MILD STEEL", r"\bMILD\s+STEEL\b"),
+        ("CARBON STEEL", r"\bCARBON\s+STEEL\b"),
+        ("HIGH TENSILE STEEL", r"\bHIGH\s+TENSILE(?:\s+STEEL)?\b"),
+        ("FORGED STEEL", r"\bFORGED\s+STEEL\b"),
+    )
+    for value, pattern in material_types:
+        if re.search(pattern, description):
+            existing = result.get("material_type")
+            if existing and _normalized_engineering_value("material_type", existing) != _normalized_engineering_value("material_type", value):
+                result["material_type"] = f"CONFLICT: {existing} / {value}"
+            else:
+                result.setdefault("material_type", value)
+            break
     return result
 
 

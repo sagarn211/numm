@@ -36,6 +36,8 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     user = db.query(User).filter(User.id == int(user_id)).first()
     if not user:
         raise HTTPException(401, "User not found")
+    if user.account_status != "APPROVED":
+        raise HTTPException(401, "This account is not approved for access")
     return user
 
 def require_role(*roles: str):

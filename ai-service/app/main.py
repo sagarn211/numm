@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from app.engine_adapter import log_engine_startup
-from app.routers import evaluation, health, matching
+from app.routers import evaluation, health, matching, visual_search
 
 
 @asynccontextmanager
@@ -20,6 +20,7 @@ app = FastAPI(
 app.include_router(health.router)
 app.include_router(matching.router)
 app.include_router(evaluation.router)
+app.include_router(visual_search.router)
 
 @app.get("/")
 def root():

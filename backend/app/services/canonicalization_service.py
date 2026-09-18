@@ -48,6 +48,7 @@ def canonicalize_row(row: dict):
         "unit": data.get("unit"),
         "manufacturer": data.get("manufacturer"),
         "model": data.get("model"),
+        "image_filename": data.get("image_filename") or data.get("image"),
         "specifications": data.get("specifications") or {},
     }
 

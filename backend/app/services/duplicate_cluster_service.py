@@ -4,6 +4,7 @@ from collections import Counter, defaultdict
 from app.models.cpse import CPSE
 from app.models.material import Material
 from app.models.material_match import MaterialMatch
+from app.models.material_mapping import MaterialMapping
 from app.services.conflict_resolution_service import propose_canonical
 
 
@@ -29,7 +30,11 @@ def duplicate_clusters(db, status="PENDING"):
     ]))
     if status:
         query = query.filter(MaterialMatch.status == status)
-    edges = query.order_by(MaterialMatch.id).all()
+    mappings = dict(db.query(MaterialMapping.material_id, MaterialMapping.national_material_id).all())
+    # A pair already resolved by the same National Material is not actionable work.
+    edges = [edge for edge in query.order_by(MaterialMatch.id).all() if not (
+        mappings.get(edge.material_a_id) and mappings.get(edge.material_a_id) == mappings.get(edge.material_b_id)
+    )]
     visual = _UnionFind()
     identity = _UnionFind()
     for edge in edges:

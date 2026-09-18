@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Building2, Plus, ShieldCheck } from 'lucide-react';
+import { Building2, Check, Plus, ShieldCheck, X } from 'lucide-react';
 import { cpseApi } from '../services/cpseApi';
 import { userApi } from '../services/userApi';
 import { Button } from '../components/common/Button';
@@ -28,7 +28,11 @@ export const CPSEManagement = () => {
     try {
       const [cpseResponse, userResponse] = await Promise.all([cpseApi.getAll(), userApi.getAll()]);
       setRows(cpseResponse.data || []);
-      setUsers(userResponse.data || []);
+      setUsers((userResponse.data || []).map(user => ({
+        ...user,
+        approval_role: user.requested_role || 'REQUESTING_OFFICER',
+        approval_cpse_id: user.requested_cpse_id || '',
+      })));
       setError('');
     } catch (requestError) {
       setError(requestError?.response?.data?.detail || requestError.message);
@@ -78,6 +82,35 @@ export const CPSEManagement = () => {
     }
   };
 
+  const approveUser = async user => {
+    try {
+      if (needsCpse(user.approval_role) && !user.approval_cpse_id) {
+        setError(`${user.name} needs a CPSE assignment before approval.`);
+        return;
+      }
+      await userApi.approve(user.id, user.approval_role, user.approval_cpse_id);
+      setError('');
+      setSuccess(`${user.name}'s account was approved.`);
+      await load();
+    } catch (requestError) {
+      setError(requestError?.response?.data?.detail || requestError.message);
+    }
+  };
+
+  const rejectUser = async user => {
+    try {
+      await userApi.reject(user.id);
+      setError('');
+      setSuccess(`${user.name}'s account request was rejected.`);
+      await load();
+    } catch (requestError) {
+      setError(requestError?.response?.data?.detail || requestError.message);
+    }
+  };
+
+  const pendingUsers = users.filter(user => user.account_status === 'PENDING');
+  const activeUsers = users.filter(user => user.account_status === 'APPROVED');
+
   return (
     <div className="space-y-6">
       <div>
@@ -113,6 +146,21 @@ export const CPSEManagement = () => {
         ))}
       </div>
 
+      <section className="overflow-hidden rounded-xl border border-amber-200 bg-amber-50/40">
+        <div className="flex items-center justify-between border-b border-amber-200 px-4 py-3">
+          <div><h3 className="text-sm font-bold text-slate-800">Pending account requests</h3><p className="text-xs text-slate-600">Approve access only after verifying the applicant and CPSE assignment.</p></div>
+          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">{pendingUsers.length} pending</span>
+        </div>
+        {pendingUsers.length ? <div className="divide-y divide-amber-100">{pendingUsers.map(user => (
+          <div key={user.id} className="grid gap-3 bg-white p-4 lg:grid-cols-[minmax(180px,1fr)_190px_170px_auto] lg:items-end">
+            <div><div className="font-bold text-sm">{user.name}</div><div className="text-xs text-slate-500">{user.email}</div><div className="mt-1 text-xs text-slate-500">Requested CPSE: {rows.find(cpse => cpse.id === user.requested_cpse_id)?.code || 'Not provided'}</div></div>
+            <label className="text-[11px] font-semibold text-slate-600">Role<select value={user.approval_role} onChange={event => changeUser(user.id, 'approval_role', event.target.value)} className="mt-1 w-full rounded-lg border bg-white px-2 py-2 text-xs">{ROLES.filter(role => !['PENDING_USER', 'SYSTEM_ADMIN'].includes(role)).map(role => <option key={role} value={role}>{roleLabel(role)}</option>)}</select></label>
+            <label className="text-[11px] font-semibold text-slate-600">CPSE<select value={user.approval_cpse_id} disabled={!needsCpse(user.approval_role)} onChange={event => changeUser(user.id, 'approval_cpse_id', event.target.value)} className="mt-1 w-full rounded-lg border bg-white px-2 py-2 text-xs disabled:bg-slate-100"><option value="">No CPSE</option>{rows.map(cpse => <option key={cpse.id} value={cpse.id}>{cpse.code}</option>)}</select></label>
+            <div className="flex gap-2"><Button size="sm" icon={Check} onClick={() => approveUser(user)}>Approve</Button><Button size="sm" variant="secondary" icon={X} onClick={() => rejectUser(user)}>Reject</Button></div>
+          </div>
+        ))}</div> : <p className="p-5 text-center text-xs text-slate-500">No account requests are awaiting approval.</p>}
+      </section>
+
       <section className="bg-white border rounded-xl overflow-hidden">
         <div className="p-4 border-b flex items-center gap-2">
           <ShieldCheck className="w-5 h-5 text-blue-600" />
@@ -127,7 +175,7 @@ export const CPSEManagement = () => {
               <tr><th className="p-3 text-left">User</th><th className="p-3 text-left">Role</th><th className="p-3 text-left">Assigned CPSE</th><th className="p-3 text-right">Action</th></tr>
             </thead>
             <tbody className="divide-y">
-              {users.map(user => (
+              {activeUsers.map(user => (
                 <tr key={user.id}>
                   <td className="p-3"><div className="font-bold">{user.name}</div><div className="text-slate-500">{user.email}</div></td>
                   <td className="p-3">

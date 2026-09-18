@@ -10,6 +10,7 @@ from app.models.material import Material
 from app.models.user import User
 from app.utils.rbac import ensure_cpse_access, is_system_admin, require_permission
 from app.services.audit_service import snapshot_model, write_audit
+from app.routers.materials import material_data
 
 router = APIRouter(prefix="/api/inventory", tags=["Inventory"])
 
@@ -50,7 +51,8 @@ def list_all(
         q = q.filter(Inventory.cpse_id == cpse_id)
     if material_id:
         q = q.filter(Inventory.material_id == material_id)
-    return q.order_by(Inventory.id.desc()).all()
+    # Preserve inventory fields while exposing the related material's verified primary image.
+    return [dict({column.name: getattr(item, column.name) for column in Inventory.__table__.columns}, primary_image_url=material_data(db.query(Material).filter(Material.id == item.material_id).first(), db)["primary_image_url"]) for item in q.order_by(Inventory.id.desc()).all()]
 
 @router.put("/{inventory_id}")
 def update(

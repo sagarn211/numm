@@ -29,6 +29,7 @@ def token_response(user):
             "email": user.email,
             "role": canonical_role(user.role),
             "cpse_id": user.cpse_id,
+            "account_status": user.account_status,
             "permissions": permissions_for(user),
         },
     }
@@ -49,15 +50,36 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
         password_hash=hash_password(payload.password),
         role=PENDING_USER,
         cpse_id=None,
+        account_status="PENDING",
+        requested_role="REQUESTING_OFFICER",
+        requested_cpse_id=payload.cpse_id,
     )
     db.add(user); db.commit(); db.refresh(user)
-    return token_response(user)
+    return {
+        "id": user.id,
+        "message": "Registration submitted. A system administrator must approve your account before you can sign in.",
+        "account_status": user.account_status,
+    }
+
+
+@router.get("/registration-cpses")
+def registration_cpses(db: Session = Depends(get_db)):
+    """Public, minimal CPSE directory used only by the account-request form."""
+    return [{"id": cpse.id, "code": cpse.code, "name": cpse.name} for cpse in db.query(CPSE).order_by(CPSE.name).all()]
+
+
+def ensure_account_is_approved(user: User) -> None:
+    if user.account_status == "PENDING":
+        raise HTTPException(403, "Your registration is awaiting administrator approval")
+    if user.account_status == "REJECTED":
+        raise HTTPException(403, "Your account request was not approved. Contact a system administrator.")
 
 @router.post("/login")
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == form.username.lower()).first()
     if not user or not verify_password(form.password, user.password_hash):
         raise HTTPException(401, "Invalid email or password")
+    ensure_account_is_approved(user)
     return token_response(user)
 
 @router.post("/login-json")
@@ -65,12 +87,14 @@ def login_json(payload: LoginJSONRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == payload.email.lower()).first()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(401, "Invalid email or password")
+    ensure_account_is_approved(user)
     return token_response(user)
 
 @router.get("/me")
 def me(user: User = Depends(get_current_user)):
+    ensure_account_is_approved(user)
     return {
         "id": user.id, "name": user.name, "email": user.email,
         "role": canonical_role(user.role), "cpse_id": user.cpse_id,
-        "permissions": permissions_for(user),
+        "permissions": permissions_for(user), "account_status": user.account_status,
     }

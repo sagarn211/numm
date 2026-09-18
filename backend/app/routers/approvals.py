@@ -5,6 +5,7 @@ from app.config.database import get_db
 from app.models.cpse import CPSE
 from app.models.material import Material
 from app.models.material_match import MaterialMatch
+from app.models.material_mapping import MaterialMapping
 from app.schemas.approval import ApprovalRequest
 from app.services.approval_service import approve_match, reject_match
 from app.utils.pagination import paginate
@@ -72,6 +73,10 @@ def list_approvals_paginated(
         if material_ids else []
     )
     material_by_id = {material.id: material for material in materials}
+    mapping_rows = db.query(MaterialMapping).filter(MaterialMapping.material_id.in_(material_ids)).all() if material_ids else []
+    national_ids_by_material = {}
+    for mapping in mapping_rows:
+        national_ids_by_material.setdefault(mapping.material_id, set()).add(mapping.national_material_id)
     cpse_ids = {material.cpse_id for material in materials}
     cpse_by_id = {
         cpse.id: cpse
@@ -96,8 +101,17 @@ def list_approvals_paginated(
             "cpse_code": cpse.code if cpse else f"CPSE-{material.cpse_id}",
         }
 
-    result["items"] = [
-        {
+    result["items"] = []
+    for match in matches:
+        mapped_national_ids = set().union(
+            national_ids_by_material.get(match.material_a_id, set()),
+            national_ids_by_material.get(match.material_b_id, set()),
+        )
+        mapping_state = (
+            "CONFLICTING_MAPPINGS" if len(mapped_national_ids) > 1
+            else "ALREADY_MAPPED" if mapped_national_ids else "UNMAPPED"
+        )
+        result["items"].append({
             "id": match.id,
             "final_score": match.final_score,
             "classification": match.classification,
@@ -113,9 +127,16 @@ def list_approvals_paginated(
                 material_by_id[item_id] for item_id in (match.material_a_id, match.material_b_id)
                 if item_id in material_by_id
             ]),
+            "mapping_state": mapping_state,
+            "approval_blocked": mapping_state != "UNMAPPED",
+            "approval_block_reason": (
+                "Source materials are already mapped to different National Material Codes"
+                if mapping_state == "CONFLICTING_MAPPINGS"
+                else "Source material is already mapped to a National Material Code"
+                if mapping_state == "ALREADY_MAPPED" else None
+            ),
         }
-        for match in matches
-    ]
+        )
     count_rows = db.query(
         MaterialMatch.status,
         func.count(MaterialMatch.id),
@@ -142,6 +163,14 @@ def approve(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("approval.review")),
 ):
+    match = db.get(MaterialMatch, match_id)
+    if not match:
+        raise HTTPException(404, "Match not found")
+    if match.classification != "FUNCTIONAL_EQUIVALENT":
+        # Identity decisions are deliberately cluster-only. Pair evidence remains
+        # readable through recommendations and cluster detail, but cannot create
+        # a National Material or legacy mapping from this legacy endpoint.
+        raise HTTPException(410, "Pair identity approval is retired; review and approve the persisted cluster instead")
     return approve_match(
         db, match_id, reviewer_id=current_user.id,
         comment=payload.comment if payload else None,

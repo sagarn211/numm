@@ -19,14 +19,11 @@ def map_material(db, material_id, national_material_id, mapping_type="MANUAL", a
     ).with_for_update().first()
     if obj:
         if obj.national_material_id != national_material_id:
-            before = snapshot_model(obj)
-            obj.national_material_id = national_material_id
-            obj.mapping_type = mapping_type
-            obj.approved_by = approved_by
-            db.flush()
-            write_audit(db, "MAPPING_REASSIGNED", "MaterialMapping", obj.id, approved_by, {
-                "before": before, "after": snapshot_model(obj),
-            }, commit=False)
+            raise HTTPException(409, {
+                "message": "Mapping conflict: material already belongs to a different National Material",
+                "material_id": material_id, "current_national_material_id": obj.national_material_id,
+                "requested_national_material_id": national_material_id,
+            })
         return obj
     obj = MaterialMapping(
         material_id=material_id,
@@ -38,4 +35,24 @@ def map_material(db, material_id, national_material_id, mapping_type="MANUAL", a
     write_audit(db, "MAPPING_CREATED", "MaterialMapping", obj.id, approved_by, {
         "after": snapshot_model(obj),
     }, commit=False)
+    return obj
+
+
+def reassign_material_mapping(db, material_id, national_material_id, approved_by=None, reason=None):
+    """Explicit governance-only reassignment. Normal approval paths must not call this."""
+    from fastapi import HTTPException
+    if not (reason or "").strip():
+        raise HTTPException(400, "A reason is required to reassign a National Material mapping")
+    obj = db.query(MaterialMapping).filter(MaterialMapping.material_id == material_id).with_for_update().first()
+    if not obj:
+        raise HTTPException(404, "Existing mapping not found")
+    if obj.national_material_id == national_material_id:
+        return obj
+    before = snapshot_model(obj)
+    obj.national_material_id = national_material_id
+    obj.mapping_type = "GOVERNED_REASSIGNMENT"
+    obj.approved_by = approved_by
+    db.flush()
+    write_audit(db, "MAPPING_REASSIGNED", "MaterialMapping", obj.id, approved_by,
+                {"reason": reason, "before": before, "after": snapshot_model(obj)}, commit=False)
     return obj

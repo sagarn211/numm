@@ -15,7 +15,7 @@ from app.utils.pagination import paginate
 from app.models.user import User
 from app.utils.rbac import require_permission
 from app.services.audit_service import write_audit
-from app.services.duplicate_cluster_service import duplicate_clusters
+from app.services.cluster_governance_service import generate_proposed_clusters, get_clusters
 
 router = APIRouter(prefix="/api/matching", tags=["AI Matching"])
 logger = logging.getLogger(__name__)
@@ -32,6 +32,9 @@ async def run(
 ):
     try:
         matches = await run_matching(db)
+        # Discovery writes only new PROPOSED clusters; reviewed clusters are immutable
+        # to matching recomputation and remain the source of truth.
+        generate_proposed_clusters(db, current_user.id)
         write_audit(db, "AI_MATCHING_RUN", "MaterialMatch", None, current_user.id, {"recommendations_created": len(matches)})
         return matches
     except AIServiceUnavailable as exc:
@@ -181,14 +184,20 @@ async def health(
 
 @router.get("/clusters")
 def clusters(
-    status: str | None = "PENDING",
+    status: str | None = None,
+    page: int = Query(1, ge=1),
+    limit: int = Query(25, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("approval.read")),
 ):
+    """Deprecated read alias which now exposes only persisted clusters."""
     normalized = status.upper() if status else None
-    if normalized not in {None, "PENDING", "APPROVED", "REJECTED"}:
-        raise HTTPException(400, "Invalid cluster status")
-    return duplicate_clusters(db, normalized)
+    if normalized == "PENDING": normalized = "PROPOSED"
+    return get_clusters(db, normalized, page, limit)
+
+@router.post("/clusters")
+def create_cluster(payload: dict, db: Session = Depends(get_db), current_user: User = Depends(require_permission("approval.review"))):
+    raise HTTPException(410, "Manual cluster creation is retired; generate evidence-backed persisted clusters at /api/clusters/generate")
 
 
 @router.get("/evaluation")

@@ -9,5 +9,6 @@ export const authApi = {
     ...data,
     role: data.role === 'officer' ? 'CPSE_OFFICER' : String(data.role || 'CPSE_OFFICER').toUpperCase(),
   }),
+  getRegistrationCpses: () => api.get('/api/auth/registration-cpses'),
   getMe: () => api.get('/api/auth/me'),
 };

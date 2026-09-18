@@ -4,9 +4,10 @@ ARG MODEL_REVISION=c9745ed1d9f207416be6d2e6f8de32d1f16199bf
 COPY ai-service/requirements.lock .
 RUN pip install --no-cache-dir -r requirements.lock
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2', revision='${MODEL_REVISION}').save('/models/all-MiniLM-L6-v2')"
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('clip-ViT-B-32').save('/models/clip-ViT-B-32')"
 COPY ai-service /app
 COPY teammate-ai /teammate-ai
-ENV MODEL_PATH=/models/all-MiniLM-L6-v2 TEAMMATE_AI_SRC=/teammate-ai/src MODEL_VERSION=${MODEL_REVISION}
+ENV MODEL_PATH=/models/all-MiniLM-L6-v2 VISUAL_MODEL_PATH=/models/clip-ViT-B-32 TEAMMATE_AI_SRC=/teammate-ai/src MODEL_VERSION=${MODEL_REVISION}
 RUN python /teammate-ai/tests/eval_against_ground_truth.py --output /app/evaluation/latest.json
 ENV EVALUATION_REPORT_PATH=/app/evaluation/latest.json
 EXPOSE 8001

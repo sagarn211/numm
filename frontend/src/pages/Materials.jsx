@@ -124,10 +124,6 @@ export const Materials = () => {
     navigate(`/comparison?codeA=${mat.code}`);
   };
 
-  const handleMap = (mat) => {
-    navigate(`/approvals?code=${mat.code}`);
-  };
-
   const writableCpses = hasPermission(user, '*')
     ? cpses
     : cpses.filter(item => item.id === user?.cpse_id);
@@ -187,9 +183,8 @@ export const Materials = () => {
       ) : (
         <MaterialTable
           materials={materials}
-          onSelect={setSelectedMaterial}
-          onCompare={handleCompare}
-          onMap={handleMap}
+          onSelectMaterial={setSelectedMaterial}
+          onCompareMaterial={handleCompare}
         />
       )}
 

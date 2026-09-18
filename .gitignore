@@ -6,3 +6,12 @@ frontend/node_modules/
 dist/
 __pycache__/
 *.pyc
+
+# Project documentation is consolidated in the root README.
+/docs/
+/README_REMAINING.md
+/backend/README.md
+/frontend/README.md
+/ai-service/README.md
+/mock-sap/README.md
+/datasets/README.md

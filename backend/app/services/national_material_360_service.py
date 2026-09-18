@@ -16,6 +16,7 @@ from app.models.national_material import NationalMaterial
 from app.models.procurement_record import ProcurementRecord
 from app.services.audit_service import snapshot_model
 from app.services.procurement_intelligence_service import procurement_opportunities
+from app.services.price_intelligence_service import material_price_intelligence
 
 
 def national_material_360(db, national_id):
@@ -98,4 +99,6 @@ def national_material_360(db, national_id):
             "provenance": national.provenance or {},
         },
         "procurement_opportunity": opportunities[0] if opportunities else None,
+        # The same persisted, mapping-based price view exposed on the dashboard.
+        "price_intelligence": material_price_intelligence(db, national_id),
     }

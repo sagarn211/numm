@@ -1,7 +1,7 @@
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-import json, math, uuid
+import json, math, uuid, zipfile
 from fastapi import HTTPException
 from sqlalchemy import or_
 from app.config.settings import settings
@@ -24,8 +24,8 @@ def _save(file):
     d = Path(settings.UPLOAD_DIR)
     d.mkdir(parents=True, exist_ok=True)
     suffix = Path(file.filename or "").suffix.lower()
-    if suffix not in {".csv", ".xlsx"}:
-        raise HTTPException(400, "Only CSV and XLSX files are supported")
+    if suffix not in {".csv", ".xlsx", ".zip"}:
+        raise HTTPException(400, "Material imports support CSV, XLSX, or ZIP; inventory imports support CSV or XLSX")
     path = d / f"{uuid.uuid4().hex}{suffix}"
     written = 0
     try:
@@ -41,7 +41,30 @@ def _save(file):
     except Exception:
         path.unlink(missing_ok=True)
         raise
-    return path, suffix
+    if suffix != ".zip":
+        return path, suffix
+    # ZIP imports are deliberately material-only and accept a single materials.csv plus images/.
+    target = path.with_suffix("")
+    try:
+        with zipfile.ZipFile(path) as archive:
+            members = archive.infolist()
+            if len(members) > 10000 or sum(entry.file_size for entry in members) > 200 * 1024 * 1024:
+                raise HTTPException(413, "ZIP archive exceeds safe extraction limits")
+            for entry in members:
+                member = Path(entry.filename)
+                if member.is_absolute() or ".." in member.parts:
+                    raise HTTPException(400, "ZIP contains an unsafe path")
+            csv_entries = [entry for entry in members if Path(entry.filename).name.lower() == "materials.csv"]
+            if len(csv_entries) != 1:
+                raise HTTPException(400, "ZIP must contain exactly one materials.csv")
+            archive.extractall(target)
+            csv_path = target / csv_entries[0].filename
+            if not csv_path.is_file(): raise HTTPException(400, "ZIP materials.csv could not be extracted")
+    except zipfile.BadZipFile as exc:
+        raise HTTPException(400, "Uploaded ZIP is invalid") from exc
+    finally:
+        path.unlink(missing_ok=True)
+    return csv_path, ".csv"
 
 def _read(path, suffix):
     return read_csv_file(str(path)) if suffix == ".csv" else read_excel_file(str(path))
