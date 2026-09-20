@@ -1,10 +1,14 @@
-import { Eye, GitCompare } from 'lucide-react';
-import { getCPSEBadgeColor, getStatusBadgeColor, formatConfidence } from '../../utils/formatters';
+import { Eye, GitCompare } from "lucide-react";
+import {
+  getCPSEBadgeColor,
+  getStatusBadgeColor,
+  formatConfidence,
+} from "../../utils/formatters";
 
 export const MaterialTable = ({
   materials = [],
   onSelectMaterial,
-  onCompareMaterial
+  onCompareMaterial,
 }) => {
   return (
     <div className="bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-2xs">
@@ -32,7 +36,9 @@ export const MaterialTable = ({
               <th className="py-3 px-4">UOM</th>
               <th className="py-3 px-4">Match Status</th>
               <th className="hidden xl:table-cell py-3 px-4">National Code</th>
-              <th className="hidden xl:table-cell py-3 px-4 text-center">Confidence</th>
+              <th className="hidden xl:table-cell py-3 px-4 text-center">
+                Confidence
+              </th>
               <th className="py-3 px-2 text-center">Actions</th>
             </tr>
           </thead>
@@ -42,8 +48,8 @@ export const MaterialTable = ({
               const statusBadge = getStatusBadgeColor(item.matchStatus);
 
               return (
-                <tr 
-                  key={item.id} 
+                <tr
+                  key={item.id}
                   className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
                   onClick={() => onSelectMaterial(item)}
                 >
@@ -54,13 +60,20 @@ export const MaterialTable = ({
                     {item.description}
                   </td>
                   <td className="py-3.5 px-4">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${cpseBadge}`}>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded border ${cpseBadge}`}
+                    >
                       {item.cpse}
                     </span>
                   </td>
                   <td className="py-3.5 px-4 text-slate-600 font-medium">
                     <span className="block">{item.category}</span>
-                    <span className="text-[10px] text-slate-400">{item.subcategory}{item.classificationSource ? ` · ${item.classificationSource}` : ''}</span>
+                    <span className="text-[10px] text-slate-400">
+                      {item.subcategory}
+                      {item.classificationSource
+                        ? ` · ${item.classificationSource}`
+                        : ""}
+                    </span>
                   </td>
                   <td className="hidden 2xl:table-cell py-3.5 px-4 text-slate-500 font-mono text-[11px] truncate">
                     {item.specification}
@@ -69,7 +82,9 @@ export const MaterialTable = ({
                     {item.uom}
                   </td>
                   <td className="py-3.5 px-4">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusBadge}`}>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusBadge}`}
+                    >
                       {item.matchStatus}
                     </span>
                   </td>
@@ -84,14 +99,23 @@ export const MaterialTable = ({
                   </td>
                   <td className="hidden xl:table-cell py-3.5 px-4 text-center font-mono font-bold">
                     {item.confidence > 0 ? (
-                      <span className={item.confidence >= 90 ? 'text-emerald-600' : 'text-amber-600'}>
+                      <span
+                        className={
+                          item.confidence >= 90
+                            ? "text-emerald-600"
+                            : "text-amber-600"
+                        }
+                      >
                         {formatConfidence(item.confidence)}
                       </span>
                     ) : (
                       <span className="text-slate-400">—</span>
                     )}
                   </td>
-                  <td className="py-3.5 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+                  <td
+                    className="py-3.5 px-2 text-center"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <div className="flex items-center justify-center gap-1">
                       <button
                         onClick={() => onSelectMaterial(item)}

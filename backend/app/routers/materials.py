@@ -14,7 +14,7 @@ from app.models.material_match import MaterialMatch
 from app.models.inventory import Inventory
 from app.models.material_image import MaterialImage
 from app.models.demand_record import DemandRecord
-from app.utils.rbac import ensure_cpse_access, is_system_admin, require_permission
+from app.utils.rbac import can_discover_materials_across_cpses, ensure_cpse_access, is_system_admin, require_permission
 from app.services.audit_service import snapshot_model, write_audit
 from app.services.classification_service import classify_material
 from app.services.material_schema_service import canonical_standard_description
@@ -76,6 +76,19 @@ def list_paginated(
     result = paginate(material_query(db, search, cpse_id, category, status), page, limit)
     result["items"] = [material_data(material, db) for material in result["items"]]
     return result
+
+@router.get("/discovery")
+def discover_materials(
+    search: str | None = None,
+    limit: int = Query(25, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("matching.search")),
+):
+    """Cross-CPSE product discovery for AI search; never returns inventory data."""
+    if not can_discover_materials_across_cpses(current_user):
+        raise HTTPException(403, "Your role cannot search materials across CPSEs")
+    materials = material_query(db, search, None, None, "ACTIVE").limit(limit).all()
+    return [material_data(material, db) for material in materials]
 
 @router.get("/{material_id}")
 def get_one(

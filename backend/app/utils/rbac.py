@@ -82,6 +82,14 @@ def is_system_admin(user: User) -> bool:
     return canonical_role(user.role) == SYSTEM_ADMIN
 
 
+def can_discover_materials_across_cpses(user: User) -> bool:
+    """Roles allowed to discover products across CPSEs without stock visibility."""
+    return is_system_admin(user) or canonical_role(user.role) in {
+        PROCUREMENT_OFFICER,
+        REQUESTING_OFFICER,
+    }
+
+
 def ensure_cpse_access(user: User, cpse_id: int) -> None:
     if is_system_admin(user):
         return

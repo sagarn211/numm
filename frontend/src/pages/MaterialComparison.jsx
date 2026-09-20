@@ -1,29 +1,32 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { GitCompare, ArrowLeft, AlertCircle } from 'lucide-react';
-import { matchingApi } from '../services/matchingApi';
-import { materialApi } from '../services/materialApi';
-import { ComparisonPanel } from '../components/matching/ComparisonPanel';
-import { Button } from '../components/common/Button';
-import { Loading } from '../components/common/Loading';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { GitCompare, ArrowLeft, AlertCircle } from "lucide-react";
+import { matchingApi } from "../services/matchingApi";
+import { materialApi } from "../services/materialApi";
+import { ComparisonPanel } from "../components/matching/ComparisonPanel";
+import { Button } from "../components/common/Button";
+import { Loading } from "../components/common/Loading";
 
 export const MaterialComparison = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [materials, setMaterials] = useState([]);
-  const [codeA, setCodeA] = useState(searchParams.get('codeA') || '');
-  const [codeB, setCodeB] = useState(searchParams.get('codeB') || '');
+  const [codeA, setCodeA] = useState(searchParams.get("codeA") || "");
+  const [codeB, setCodeB] = useState(searchParams.get("codeB") || "");
   const [comparisonData, setComparisonData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const comparisonRequestId = useRef(0);
-  const queryCodeA = searchParams.get('codeA');
-  const queryCodeB = searchParams.get('codeB');
+  const queryCodeA = searchParams.get("codeA");
+  const queryCodeB = searchParams.get("codeB");
 
   useEffect(() => {
-    materialApi.getMaterials()
-      .then(res => setMaterials(res.data || []))
-      .catch(err => console.error('Failed to load materials for comparison', err));
+    materialApi
+      .searchDiscoverableMaterials("", 100)
+      .then((res) => setMaterials(res.data || []))
+      .catch((err) =>
+        console.error("Failed to load materials for comparison", err),
+      );
   }, []);
 
   const runComparison = useCallback(async (a, b) => {
@@ -34,7 +37,7 @@ export const MaterialComparison = () => {
       return;
     }
     setLoading(true);
-    setError('');
+    setError("");
     try {
       const res = await matchingApi.compareMaterials(a, b);
       if (requestId === comparisonRequestId.current) {
@@ -42,8 +45,12 @@ export const MaterialComparison = () => {
       }
     } catch (err) {
       if (requestId !== comparisonRequestId.current) return;
-      console.error('Failed to compare materials', err);
-      setError(err?.response?.data?.detail || err.message || 'Failed to compare selected materials.');
+      console.error("Failed to compare materials", err);
+      setError(
+        err?.response?.data?.detail ||
+          err.message ||
+          "Failed to compare selected materials.",
+      );
       setComparisonData(null);
     } finally {
       if (requestId === comparisonRequestId.current) {
@@ -76,7 +83,7 @@ export const MaterialComparison = () => {
   };
 
   const handleCreateMapping = (nationalCode) => {
-    navigate(`/approvals?code=${codeA}&nationalCode=${nationalCode || ''}`);
+    navigate(`/approvals?code=${codeA}&nationalCode=${nationalCode || ""}`);
   };
 
   return (
@@ -92,15 +99,25 @@ export const MaterialComparison = () => {
               <ArrowLeft className="w-3.5 h-3.5" /> Back
             </button>
           </div>
-          <h2 className="text-xl font-bold text-slate-900 tracking-tight">Material Parameter Comparison Workspace</h2>
-          <p className="text-xs text-slate-500">Side-by-side technical evaluation for cross-CPSE material harmonization</p>
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+            Material Parameter Comparison Workspace
+          </h2>
+          <p className="text-xs text-slate-500">
+            Side-by-side technical evaluation for cross-CPSE material
+            harmonization
+          </p>
         </div>
       </div>
 
       {/* Select Materials Bar */}
-      <form onSubmit={handleCompareSubmit} className="bg-white border rounded-xl p-4 grid md:grid-cols-5 gap-3 items-end shadow-2xs">
+      <form
+        onSubmit={handleCompareSubmit}
+        className="bg-white border rounded-xl p-4 grid md:grid-cols-5 gap-3 items-end shadow-2xs"
+      >
         <div className="md:col-span-2">
-          <label className="block text-xs font-bold text-slate-700 mb-1">Source Material A</label>
+          <label className="block text-xs font-bold text-slate-700 mb-1">
+            Source Material A
+          </label>
           <select
             value={codeA}
             onChange={(e) => setCodeA(e.target.value)}
@@ -116,7 +133,9 @@ export const MaterialComparison = () => {
         </div>
 
         <div className="md:col-span-2">
-          <label className="block text-xs font-bold text-slate-700 mb-1">Source Material B</label>
+          <label className="block text-xs font-bold text-slate-700 mb-1">
+            Source Material B
+          </label>
           <select
             value={codeB}
             onChange={(e) => setCodeB(e.target.value)}
@@ -132,7 +151,13 @@ export const MaterialComparison = () => {
         </div>
 
         <div>
-          <Button variant="primary" icon={GitCompare} type="submit" loading={loading} className="w-full">
+          <Button
+            variant="primary"
+            icon={GitCompare}
+            type="submit"
+            loading={loading}
+            className="w-full"
+          >
             Compare
           </Button>
         </div>
@@ -146,7 +171,10 @@ export const MaterialComparison = () => {
       )}
 
       {loading ? (
-        <Loading type="ai" text="AI comparing technical specifications & parameters..." />
+        <Loading
+          type="ai"
+          text="AI comparing technical specifications & parameters..."
+        />
       ) : comparisonData ? (
         <ComparisonPanel
           comparisonData={comparisonData}
@@ -155,8 +183,13 @@ export const MaterialComparison = () => {
       ) : (
         <div className="bg-white border rounded-xl p-12 text-center text-slate-400">
           <GitCompare className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          <p className="text-sm font-bold text-slate-600">Select two materials to compare</p>
-          <p className="text-xs text-slate-400 mt-1">Side-by-side technical parameter audit and AI harmonization verdict will be displayed.</p>
+          <p className="text-sm font-bold text-slate-600">
+            Select two materials to compare
+          </p>
+          <p className="text-xs text-slate-400 mt-1">
+            Side-by-side technical parameter audit and AI harmonization verdict
+            will be displayed.
+          </p>
         </div>
       )}
     </div>

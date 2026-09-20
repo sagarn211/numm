@@ -1,10 +1,10 @@
-import { Database } from 'lucide-react';
-import { Button } from './Button';
+import { Database } from "lucide-react";
+import { Button } from "./Button";
 
 export const EmptyState = ({
   icon: Icon = Database,
-  title = 'No Data Found',
-  description = 'There are no records matching your current filter criteria or dataset selection.',
+  title = "No Data Found",
+  description = "There are no records matching your current filter criteria or dataset selection.",
   actionLabel,
   onAction,
 }) => {

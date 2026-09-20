@@ -96,7 +96,7 @@ def extract_motor(text):
 def extract_bearing(text):
     designation = _value(r"\b((?:[126789]|NU|NJ|NUP)\d{3,4}(?:[- ]?(?:2RS|RS|ZZ|Z|C3))?)\b", text,
                          lambda m: re.sub(r"\s+", "", m.group(1)))
-    dimensions = re.search(r"\b(\d+(?:\.\d+)?)\s*[XÃ—]\s*(\d+(?:\.\d+)?)\s*[XÃ—]\s*(\d+(?:\.\d+)?)\s*MM\b", text)
+    dimensions = re.search(r"\b(\d+(?:\.\d+)?)\s*[X×]\s*(\d+(?:\.\d+)?)\s*[X×]\s*(\d+(?:\.\d+)?)\s*MM\b", text)
     return {
         "family": "BEARING",
         "bearing_designation": designation,
@@ -113,7 +113,7 @@ def extract_pump(text):
     return {
         "family": "PUMP",
         "pump_type": _keyword(text, [("CENTRIFUGAL", "CENTRIFUGAL"), ("RECIPROCATING", "RECIPROCATING"), ("GEAR PUMP", "GEAR"), ("SCREW PUMP", "SCREW"), ("SUBMERSIBLE", "SUBMERSIBLE")]),
-        "flow": _value(r"\b(?:FLOW\s*)?(\d+(?:\.\d+)?)\s*(?:M3/H|M3HR|MÂ³/H)\b", text, lambda m: f"{float(m.group(1)):g}M3/H"),
+        "flow": _value(r"\b(?:FLOW\s*)?(\d+(?:\.\d+)?)\s*(?:M3/H|M3HR|M³/H)\b", text, lambda m: f"{float(m.group(1)):g}M3/H"),
         "head": _value(r"\b(?:HEAD\s*)?(\d+(?:\.\d+)?)\s*M(?:WC)?\b", text, lambda m: f"{float(m.group(1)):g}M"),
         "power": _value(r"\b(\d+(?:\.\d+)?)\s*KW\b", text, lambda m: f"{float(m.group(1)):g}KW"),
         "rpm": _value(r"\b(\d{2,5})\s*RPM\b", text, lambda m: f"{m.group(1)}RPM"),

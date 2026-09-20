@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { X } from 'lucide-react';
+import { useEffect } from "react";
+import { X } from "lucide-react";
 
 export const Modal = ({
   open,
@@ -8,16 +8,16 @@ export const Modal = ({
   subtitle,
   children,
   actions,
-  maxWidth = 'max-w-2xl',
+  maxWidth = "max-w-2xl",
 }) => {
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && open && onClose) {
+      if (e.key === "Escape" && open && onClose) {
         onClose();
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
 
   if (!open) return null;
@@ -25,22 +25,28 @@ export const Modal = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
-      <div 
+      <div
         className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-fade-in"
         onClick={onClose}
       />
 
       {/* Modal Dialog */}
       <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-6">
-        <div 
+        <div
           className={`relative w-full ${maxWidth} transform overflow-hidden rounded-2xl bg-white text-left align-middle shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] transition-all border border-slate-200/60`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
           <div className="flex items-start justify-between border-b border-slate-100 bg-linear-to-b from-slate-50 to-white px-7 py-5">
             <div>
-              <h3 className="text-[17px] font-bold text-slate-900 tracking-tight">{title}</h3>
-              {subtitle && <p className="mt-1 text-xs text-slate-500 font-medium">{subtitle}</p>}
+              <h3 className="text-[17px] font-bold text-slate-900 tracking-tight">
+                {title}
+              </h3>
+              {subtitle && (
+                <p className="mt-1 text-xs text-slate-500 font-medium">
+                  {subtitle}
+                </p>
+              )}
             </div>
             <button
               onClick={onClose}

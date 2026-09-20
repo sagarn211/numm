@@ -1,52 +1,107 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Layers, ShieldCheck, Lock, Mail, ArrowRight, Sparkles, User as UserIcon } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
-import { authApi } from '../services/authApi';
-import { Button } from '../components/common/Button';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Layers,
+  ShieldCheck,
+  Lock,
+  Mail,
+  ArrowRight,
+  Sparkles,
+  User as UserIcon,
+} from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
+import { authApi } from "../services/authApi";
+import { Button } from "../components/common/Button";
 
 export const Login = () => {
   const navigate = useNavigate();
   const { login, loading } = useAuth();
   const [isRegister, setIsRegister] = useState(false);
-  const [name, setName] = useState('');
+  const [name, setName] = useState("");
   const [cpses, setCpses] = useState([]);
-  const [cpseId, setCpseId] = useState('');
-  const [email, setEmail] = useState('officer@numm.gov.in');
-  const [password, setPassword] = useState('');
+  const [cpseId, setCpseId] = useState("");
+  const [email, setEmail] = useState("officer@numm.gov.in");
+  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
-  const [regSuccess, setRegSuccess] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [isLoadingCpses, setIsLoadingCpses] = useState(true);
+  const [cpseLoadError, setCpseLoadError] = useState("");
+  const [registrationComplete, setRegistrationComplete] = useState(false);
+  const [regSuccess, setRegSuccess] = useState("");
   const [error, setError] = useState(() => {
-    const message = sessionStorage.getItem('numm_session_message') || '';
-    sessionStorage.removeItem('numm_session_message');
+    const message = sessionStorage.getItem("numm_session_message") || "";
+    sessionStorage.removeItem("numm_session_message");
     return message;
   });
 
+  const loadRegistrationCpses = async () => {
+    setIsLoadingCpses(true);
+    setCpseLoadError("");
+    try {
+      const response = await authApi.getRegistrationCpses();
+      setCpses(response.data || []);
+    } catch {
+      setCpses([]);
+      setCpseLoadError("Unable to load the CPSE directory. Please try again.");
+    } finally {
+      setIsLoadingCpses(false);
+    }
+  };
+
   useEffect(() => {
-    authApi.getRegistrationCpses().then(response => setCpses(response.data || [])).catch(() => setCpses([]));
+    loadRegistrationCpses();
   }, []);
+
+  const selectAuthMode = (registering) => {
+    setIsRegister(registering);
+    setError("");
+    setRegSuccess("");
+    setRegistrationComplete(false);
+    setPassword("");
+    if (registering && email === "officer@numm.gov.in") setEmail("");
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     if (isRegister) {
+      if (password.length < 12) {
+        setError("Use a password with at least 12 characters.");
+        return;
+      }
+      if (!cpseId) {
+        setError("Select your CPSE before submitting your request.");
+        return;
+      }
+      setIsRegistering(true);
       try {
         const response = await authApi.register({
           name,
           email,
           password,
-          role: 'REQUESTING_OFFICER',
+          role: "REQUESTING_OFFICER",
           cpse_id: Number(cpseId),
         });
-        setRegSuccess(response.data?.message || 'Registration submitted. Wait for administrator approval before signing in.');
-        setPassword('');
-        setIsRegister(false);
+        setRegSuccess(
+          response.data?.message ||
+            "Registration submitted. Wait for administrator approval before signing in.",
+        );
+        setPassword("");
+        setRegistrationComplete(true);
       } catch (err) {
-        setError(err?.response?.data?.detail || err.message || 'Registration failed');
+        setError(
+          err?.response?.data?.detail || err.message || "Registration failed",
+        );
+      } finally {
+        setIsRegistering(false);
       }
     } else {
-      try { await login(email, password); navigate('/dashboard'); }
-      catch (err) { setError(err?.response?.data?.detail || err.message || 'Login failed'); }
+      try {
+        await login(email, password);
+        navigate("/dashboard");
+      } catch (err) {
+        setError(err?.response?.data?.detail || err.message || "Login failed");
+      }
     }
   };
 
@@ -54,13 +109,12 @@ export const Login = () => {
     <div className="min-h-screen bg-[#F3EDE5] flex items-center justify-center p-4 md:p-8 relative overflow-hidden font-sans">
       {/* Background Decorative Grids */}
       <div className="absolute inset-0 bg-[radial-gradient(#d7cab8_1px,transparent_1px)] [background-size:24px_24px] opacity-50"></div>
-      
+
       {/* Soft warm accents */}
       <div className="absolute -top-40 -left-40 w-96 h-96 bg-[#d7b59c]/35 rounded-full blur-3xl"></div>
       <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-[#9eaf90]/25 rounded-full blur-3xl"></div>
 
       <div className="w-full max-w-5xl bg-[#FBF8F4]/95 border border-[#d9cab7] rounded-2xl shadow-[0_24px_60px_rgba(62,46,33,0.12)] overflow-hidden grid grid-cols-1 lg:grid-cols-12 relative z-10 backdrop-blur-xl">
-        
         {/* Left Side: Visual Branding */}
         <div className="lg:col-span-7 p-8 lg:p-12 bg-gradient-to-br from-[#f1e4d6] via-[#efe3d5] to-[#e4d4c1] border-r border-[#d6c3aa]/80 flex flex-col justify-between relative overflow-hidden">
           <div>
@@ -68,14 +122,18 @@ export const Login = () => {
               <Sparkles className="w-3.5 h-3.5" />
               <span>CPSE Material Standardization Platform</span>
             </div>
-            
+
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#7d5a4a] via-[#a8775a] to-[#c69c6d] flex items-center justify-center text-white font-black text-2xl shadow-lg ring-2 ring-white/30">
                 <Layers className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-black text-[#2f261f] tracking-tight leading-none uppercase">NATIONAL UNIFIED</h1>
-                <h2 className="text-xl font-bold text-[#6c4738] tracking-wider leading-none uppercase mt-1">MATERIAL MASTER</h2>
+                <h1 className="text-2xl font-black text-[#2f261f] tracking-tight leading-none uppercase">
+                  NATIONAL UNIFIED
+                </h1>
+                <h2 className="text-xl font-bold text-[#6c4738] tracking-wider leading-none uppercase mt-1">
+                  MATERIAL MASTER
+                </h2>
               </div>
             </div>
 
@@ -83,14 +141,18 @@ export const Login = () => {
               "One Nation – One Material Code"
             </p>
             <p className="text-xs text-[#685d54] mt-2 leading-relaxed max-w-md">
-              Platform for CPSEs to standardize, match, rationalize, and map material master data across Oil & Gas, Power, Steel, Mining, and Heavy Engineering.
+              Platform for CPSEs to standardize, match, rationalize, and map
+              material master data across Oil & Gas, Power, Steel, Mining, and
+              Heavy Engineering.
             </p>
           </div>
 
           <div className="my-8 py-6 px-4 bg-[#f8f3ee]/80 rounded-xl border border-[#d7cab8] relative shadow-inner">
             <div className="text-[10px] font-bold text-[#655c54] uppercase tracking-widest mb-4 flex items-center justify-between">
               <span>CPSE CODE CONVERGENCE PIPELINE</span>
-              <span className="text-[#5f7158] font-mono flex items-center gap-1">● ACTIVE</span>
+              <span className="text-[#5f7158] font-mono flex items-center gap-1">
+                ● ACTIVE
+              </span>
             </div>
 
             <div className="space-y-3">
@@ -120,17 +182,23 @@ export const Login = () => {
           {/* Sign In vs Register Tabs */}
           <div className="flex border-b border-slate-800 mb-6">
             <button
-              onClick={() => setIsRegister(false)}
+              type="button"
+              onClick={() => selectAuthMode(false)}
               className={`pb-2 text-xs font-bold transition-colors uppercase tracking-wider flex-1 text-center ${
-                !isRegister ? 'text-[#6c4738] border-b-2 border-[#8b634e]' : 'text-[#7a6d63] hover:text-[#443b36]'
+                !isRegister
+                  ? "text-[#6c4738] border-b-2 border-[#8b634e]"
+                  : "text-[#7a6d63] hover:text-[#443b36]"
               }`}
             >
               Sign In
             </button>
             <button
-              onClick={() => setIsRegister(true)}
+              type="button"
+              onClick={() => selectAuthMode(true)}
               className={`pb-2 text-xs font-bold transition-colors uppercase tracking-wider flex-1 text-center ${
-                isRegister ? 'text-[#6c4738] border-b-2 border-[#8b634e]' : 'text-[#7a6d63] hover:text-[#443b36]'
+                isRegister
+                  ? "text-[#6c4738] border-b-2 border-[#8b634e]"
+                  : "text-[#7a6d63] hover:text-[#443b36]"
               }`}
             >
               Register
@@ -139,10 +207,12 @@ export const Login = () => {
 
           <div className="mb-4">
             <h3 className="text-xl font-bold text-[#2f261f] tracking-tight">
-              {isRegister ? 'Request Officer Account' : 'Enterprise Access'}
+              {isRegister ? "Request Officer Account" : "Enterprise Access"}
             </h3>
             <p className="text-xs text-[#685d54] mt-1">
-              {isRegister ? 'Submit your account request for system-administrator approval' : 'Sign in with your authorized CPSE credentials'}
+              {isRegister
+                ? "Submit your account request for system-administrator approval"
+                : "Sign in with your authorized CPSE credentials"}
             </p>
           </div>
 
@@ -152,96 +222,162 @@ export const Login = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && <div className="text-xs text-[#8a473c] bg-[#f0d9d4]/80 border border-[#d59c93] rounded-lg p-3">{error}</div>}
-            {isRegister && (
-              <>
-                <div>
-                  <label className="block text-xs font-medium text-[#50453f] mb-1.5">Full Name</label>
-                  <div className="relative">
-                    <UserIcon className="w-4 h-4 text-[#786d66] absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      required
-                      className="w-full bg-[#f3ece4] border border-[#d9cab7] rounded-lg pl-10 pr-4 py-2.5 text-xs text-[#2f261f] placeholder-[#8a7f76] focus:outline-none focus:ring-2 focus:ring-[#8b634e]"
-                      placeholder="e.g. Rajesh Kumar"
-                    />
+          {registrationComplete ? (
+            <div className="space-y-4 rounded-xl border border-[#d9cab7] bg-[#f3ece4] p-4 text-sm text-[#50453f]">
+              <p>
+                Your request is awaiting administrator approval. You will be
+                able to sign in once it has been approved.
+              </p>
+              <Button
+                type="button"
+                variant="primary"
+                className="w-full"
+                onClick={() => selectAuthMode(false)}
+              >
+                Return to Sign In
+              </Button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="text-xs text-[#8a473c] bg-[#f0d9d4]/80 border border-[#d59c93] rounded-lg p-3">
+                  {error}
+                </div>
+              )}
+              {isRegister && (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-[#50453f] mb-1.5">
+                      Full Name
+                    </label>
+                    <div className="relative">
+                      <UserIcon className="w-4 h-4 text-[#786d66] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        required
+                        className="w-full bg-[#f3ece4] border border-[#d9cab7] rounded-lg pl-10 pr-4 py-2.5 text-xs text-[#2f261f] placeholder-[#8a7f76] focus:outline-none focus:ring-2 focus:ring-[#8b634e]"
+                        placeholder="e.g. Rajesh Kumar"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-[#50453f] mb-1.5">Assigned CPSE</label>
-                  <select
-                    value={cpseId}
-                    onChange={(e) => setCpseId(e.target.value)}
-                    required
-                    className="w-full bg-[#f3ece4] border border-[#d9cab7] rounded-lg px-3 py-2.5 text-xs text-[#2f261f] focus:outline-none focus:ring-2 focus:ring-[#8b634e]"
-                  >
-                    <option value="">Select your CPSE</option>
-                    {cpses.map(cpse => <option key={cpse.id} value={cpse.id}>{cpse.code} — {cpse.name}</option>)}
-                  </select>
-                </div>
-              </>
-            )}
+                  <div>
+                    <label className="block text-xs font-medium text-[#50453f] mb-1.5">
+                      Assigned CPSE
+                    </label>
+                    <select
+                      value={cpseId}
+                      onChange={(e) => setCpseId(e.target.value)}
+                      required
+                      disabled={isLoadingCpses || Boolean(cpseLoadError)}
+                      className="w-full bg-[#f3ece4] border border-[#d9cab7] rounded-lg px-3 py-2.5 text-xs text-[#2f261f] focus:outline-none focus:ring-2 focus:ring-[#8b634e]"
+                    >
+                      <option value="">
+                        {isLoadingCpses ? "Loading CPSEs…" : "Select your CPSE"}
+                      </option>
+                      {cpses.map((cpse) => (
+                        <option key={cpse.id} value={cpse.id}>
+                          {cpse.code} — {cpse.name}
+                        </option>
+                      ))}
+                    </select>
+                    {cpseLoadError && (
+                      <div className="mt-1.5 flex items-center justify-between gap-2 text-xs text-[#8a473c]">
+                        <span>{cpseLoadError}</span>
+                        <button
+                          type="button"
+                          onClick={loadRegistrationCpses}
+                          className="font-semibold text-[#6c4738] underline"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
-            <div>
-              <label className="block text-xs font-medium text-[#50453f] mb-1.5">Official Email</label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-[#786d66] absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="w-full bg-[#f3ece4] border border-[#d9cab7] rounded-lg pl-10 pr-4 py-2.5 text-xs text-[#2f261f] placeholder-[#8a7f76] focus:outline-none focus:ring-2 focus:ring-[#8b634e]"
-                  placeholder="officer@numm.gov.in"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-[#50453f] mb-1.5">Password</label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-[#786d66] absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="w-full bg-[#f3ece4] border border-[#d9cab7] rounded-lg pl-10 pr-4 py-2.5 text-xs text-[#2f261f] placeholder-[#8a7f76] focus:outline-none focus:ring-2 focus:ring-[#8b634e]"
-                  placeholder="••••••••••••"
-                />
-              </div>
-            </div>
-
-            {!isRegister && (
-              <div className="flex items-center justify-between py-1">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded border-[#d1b7a1] bg-[#f3ece4] text-[#8b634e]"
-                  />
-                  <span className="text-xs text-[#655c54]">Remember session</span>
+              <div>
+                <label className="block text-xs font-medium text-[#50453f] mb-1.5">
+                  Official Email
                 </label>
-                <a href="#help" className="text-xs text-[#6c4738] hover:text-[#4d352d] font-medium">Reset password?</a>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-[#786d66] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="w-full bg-[#f3ece4] border border-[#d9cab7] rounded-lg pl-10 pr-4 py-2.5 text-xs text-[#2f261f] placeholder-[#8a7f76] focus:outline-none focus:ring-2 focus:ring-[#8b634e]"
+                    placeholder="officer@numm.gov.in"
+                  />
+                </div>
               </div>
-            )}
 
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              loading={loading}
-              className="w-full mt-2"
-              icon={ArrowRight}
-            >
-              {isRegister ? 'Submit Account Request' : 'Sign In to Command Center'}
-            </Button>
-          </form>
+              <div>
+                <label className="block text-xs font-medium text-[#50453f] mb-1.5">
+                  Password{" "}
+                  {isRegister && (
+                    <span className="font-normal text-[#786d66]">
+                      (12+ characters)
+                    </span>
+                  )}
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-[#786d66] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={isRegister ? 12 : undefined}
+                    className="w-full bg-[#f3ece4] border border-[#d9cab7] rounded-lg pl-10 pr-4 py-2.5 text-xs text-[#2f261f] placeholder-[#8a7f76] focus:outline-none focus:ring-2 focus:ring-[#8b634e]"
+                    placeholder="••••••••••••"
+                  />
+                </div>
+              </div>
+
+              {!isRegister && (
+                <div className="flex items-center justify-between py-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 rounded border-[#d1b7a1] bg-[#f3ece4] text-[#8b634e]"
+                    />
+                    <span className="text-xs text-[#655c54]">
+                      Remember session
+                    </span>
+                  </label>
+                  <a
+                    href="#help"
+                    className="text-xs text-[#6c4738] hover:text-[#4d352d] font-medium"
+                  >
+                    Reset password?
+                  </a>
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                loading={isRegister ? isRegistering : loading}
+                disabled={
+                  isRegister && (isLoadingCpses || Boolean(cpseLoadError))
+                }
+                className="w-full mt-2"
+                icon={ArrowRight}
+              >
+                {isRegister
+                  ? "Submit Account Request"
+                  : "Sign In to Command Center"}
+              </Button>
+            </form>
+          )}
 
           <div className="mt-8 pt-6 border-t border-[#d9cab7] text-center">
             <span className="inline-block text-[11px] text-[#6b625d] font-medium px-3 py-1 rounded-full bg-[#f3ece4] border border-[#d9cab7]">
@@ -249,7 +385,6 @@ export const Login = () => {
             </span>
           </div>
         </div>
-
       </div>
     </div>
   );

@@ -1,45 +1,72 @@
-import { CheckCircle2, AlertTriangle, XCircle, Sparkles, Globe2 } from 'lucide-react';
-import { Button } from '../common/Button';
-import { getCPSEBadgeColor } from '../../utils/formatters';
+import {
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  Sparkles,
+  Globe2,
+} from "lucide-react";
+import { Button } from "../common/Button";
+import { getCPSEBadgeColor } from "../../utils/formatters";
 
 export const ComparisonPanel = ({ comparisonData, onCreateMapping }) => {
   if (!comparisonData) return null;
 
-  const { materialA, materialB, comparisons, aiVerdict, confidenceScore, suggestedNationalCode, aiMatch } = comparisonData;
+  const {
+    materialA,
+    materialB,
+    comparisons,
+    aiVerdict,
+    confidenceScore,
+    suggestedNationalCode,
+    aiMatch,
+  } = comparisonData;
 
   const badgeA = getCPSEBadgeColor(materialA.cpse);
   const badgeB = getCPSEBadgeColor(materialB.cpse);
 
   return (
     <div className="space-y-6">
-      
       {/* Side-by-Side Item Headers */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        
         {/* Material A */}
         <div className="bg-white rounded-xl border border-slate-200/80 p-5 shadow-2xs">
           <div className="flex items-center justify-between mb-2">
-            <span className={`text-xs font-bold px-2 py-0.5 rounded border ${badgeA}`}>
+            <span
+              className={`text-xs font-bold px-2 py-0.5 rounded border ${badgeA}`}
+            >
               {materialA.cpse} (Source A)
             </span>
-            <span className="font-mono font-bold text-blue-600 text-xs">{materialA.code}</span>
+            <span className="font-mono font-bold text-blue-600 text-xs">
+              {materialA.code}
+            </span>
           </div>
-          <h3 className="text-sm font-bold text-slate-900">{materialA.description}</h3>
-          <p className="text-xs text-slate-500 font-mono mt-1">{materialA.category} • UOM: {materialA.uom}</p>
+          <h3 className="text-sm font-bold text-slate-900">
+            {materialA.description}
+          </h3>
+          <p className="text-xs text-slate-500 font-mono mt-1">
+            {materialA.category} • UOM: {materialA.uom}
+          </p>
         </div>
 
         {/* Material B */}
         <div className="bg-white rounded-xl border border-slate-200/80 p-5 shadow-2xs">
           <div className="flex items-center justify-between mb-2">
-            <span className={`text-xs font-bold px-2 py-0.5 rounded border ${badgeB}`}>
+            <span
+              className={`text-xs font-bold px-2 py-0.5 rounded border ${badgeB}`}
+            >
               {materialB.cpse} (Source B)
             </span>
-            <span className="font-mono font-bold text-blue-600 text-xs">{materialB.code}</span>
+            <span className="font-mono font-bold text-blue-600 text-xs">
+              {materialB.code}
+            </span>
           </div>
-          <h3 className="text-sm font-bold text-slate-900">{materialB.description}</h3>
-          <p className="text-xs text-slate-500 font-mono mt-1">{materialB.category} • UOM: {materialB.uom}</p>
+          <h3 className="text-sm font-bold text-slate-900">
+            {materialB.description}
+          </h3>
+          <p className="text-xs text-slate-500 font-mono mt-1">
+            {materialB.category} • UOM: {materialB.uom}
+          </p>
         </div>
-
       </div>
 
       {/* Parameter Field Comparison Table */}
@@ -48,16 +75,21 @@ export const ComparisonPanel = ({ comparisonData, onCreateMapping }) => {
           <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-700">
             Technical Parameter Audit Grid
           </h4>
-          <span className="text-[11px] text-slate-400 font-mono">{comparisons.length} Field Checks Evaluated</span>
+          <span className="text-[11px] text-slate-400 font-mono">
+            {comparisons.length} Field Checks Evaluated
+          </span>
         </div>
 
         <div className="divide-y divide-slate-100 text-xs">
           {comparisons.map((comp, idx) => {
-            const isMatch = comp.status === 'MATCH';
-            const isDiff = comp.status === 'DIFFERENCE';
+            const isMatch = comp.status === "MATCH";
+            const isDiff = comp.status === "DIFFERENCE";
 
             return (
-              <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-2 p-3.5 items-center hover:bg-slate-50">
+              <div
+                key={idx}
+                className="grid grid-cols-1 md:grid-cols-12 gap-2 p-3.5 items-center hover:bg-slate-50"
+              >
                 <div className="md:col-span-3 font-bold text-slate-700 flex items-center gap-2">
                   {isMatch ? (
                     <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
@@ -69,23 +101,35 @@ export const ComparisonPanel = ({ comparisonData, onCreateMapping }) => {
                   <span>{comp.field}</span>
                 </div>
 
-                <div className={`md:col-span-4 p-2 rounded-lg font-mono text-[11px] ${
-                  isMatch ? 'bg-emerald-50/50 text-emerald-900' : 'bg-amber-50/50 text-amber-900'
-                }`}>
+                <div
+                  className={`md:col-span-4 p-2 rounded-lg font-mono text-[11px] ${
+                    isMatch
+                      ? "bg-emerald-50/50 text-emerald-900"
+                      : "bg-amber-50/50 text-amber-900"
+                  }`}
+                >
                   {comp.textA}
                 </div>
 
                 <div className="md:col-span-1 text-center font-extrabold font-mono text-[10px]">
-                  <span className={`px-2 py-0.5 rounded ${
-                    isMatch ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                  }`}>
+                  <span
+                    className={`px-2 py-0.5 rounded ${
+                      isMatch
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
                     {comp.status}
                   </span>
                 </div>
 
-                <div className={`md:col-span-4 p-2 rounded-lg font-mono text-[11px] ${
-                  isMatch ? 'bg-emerald-50/50 text-emerald-900' : 'bg-amber-50/50 text-amber-900'
-                }`}>
+                <div
+                  className={`md:col-span-4 p-2 rounded-lg font-mono text-[11px] ${
+                    isMatch
+                      ? "bg-emerald-50/50 text-emerald-900"
+                      : "bg-amber-50/50 text-amber-900"
+                  }`}
+                >
                   {comp.textB}
                 </div>
               </div>
@@ -100,7 +144,9 @@ export const ComparisonPanel = ({ comparisonData, onCreateMapping }) => {
           <div className="p-4 border-b border-indigo-100 bg-indigo-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-indigo-900">
               <Sparkles className="w-4 h-4 text-indigo-600" />
-              <h4 className="text-xs font-extrabold uppercase tracking-wider">AI Score Breakdown</h4>
+              <h4 className="text-xs font-extrabold uppercase tracking-wider">
+                AI Score Breakdown
+              </h4>
             </div>
             <span className="font-mono text-[11px] font-bold text-indigo-700">
               {aiMatch.model_name || aiMatch.model} · {aiMatch.matcher_version}
@@ -108,13 +154,15 @@ export const ComparisonPanel = ({ comparisonData, onCreateMapping }) => {
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-slate-100">
             {[
-              ['Semantic', aiMatch.semantic_score],
-              ['Attributes', aiMatch.attribute_score],
-              ['Fuzzy text', aiMatch.fuzzy_score],
-              ['Final confidence', aiMatch.final_score],
+              ["Semantic", aiMatch.semantic_score],
+              ["Attributes", aiMatch.attribute_score],
+              ["Fuzzy text", aiMatch.fuzzy_score],
+              ["Final confidence", aiMatch.final_score],
             ].map(([label, score]) => (
               <div key={label} className="p-4">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  {label}
+                </p>
                 <p className="mt-1 text-xl font-extrabold font-mono text-slate-900">
                   {(Number(score || 0) * 100).toFixed(1)}%
                 </p>
@@ -124,18 +172,31 @@ export const ComparisonPanel = ({ comparisonData, onCreateMapping }) => {
           <div className="p-4 border-t border-slate-100 bg-slate-50/60 text-xs">
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <span className="font-bold text-slate-700">Classification:</span>
-              <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                aiMatch.classification === 'EXACT' ? 'bg-emerald-100 text-emerald-800' :
-                aiMatch.classification === 'FUNCTIONAL_EQUIVALENT' ? 'bg-amber-100 text-amber-800' :
-                aiMatch.classification === 'NO_MATCH' ? 'bg-rose-100 text-rose-800' : 'bg-blue-100 text-blue-800'
-              }`}>
-                {String(aiMatch.classification || 'NO_MATCH').replaceAll('_', ' ')}
+              <span
+                className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                  aiMatch.classification === "EXACT"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : aiMatch.classification === "FUNCTIONAL_EQUIVALENT"
+                      ? "bg-amber-100 text-amber-800"
+                      : aiMatch.classification === "NO_MATCH"
+                        ? "bg-rose-100 text-rose-800"
+                        : "bg-blue-100 text-blue-800"
+                }`}
+              >
+                {String(aiMatch.classification || "NO_MATCH").replaceAll(
+                  "_",
+                  " ",
+                )}
               </span>
-              {aiMatch.classification === 'FUNCTIONAL_EQUIVALENT' && (
-                <span className="text-amber-700 font-semibold">Human review required.</span>
+              {aiMatch.classification === "FUNCTIONAL_EQUIVALENT" && (
+                <span className="text-amber-700 font-semibold">
+                  Human review required.
+                </span>
               )}
             </div>
-            <p className="text-slate-600 leading-relaxed">{aiMatch.explanation}</p>
+            <p className="text-slate-600 leading-relaxed">
+              {aiMatch.explanation}
+            </p>
           </div>
         </div>
       )}
@@ -147,10 +208,22 @@ export const ComparisonPanel = ({ comparisonData, onCreateMapping }) => {
             <Sparkles className="w-4 h-4" />
             <span>AI VERDICT & CONFIDENCE EVALUATION</span>
           </div>
-          <p className="text-sm font-semibold text-slate-200 mt-1 max-w-xl">{aiVerdict}</p>
+          <p className="text-sm font-semibold text-slate-200 mt-1 max-w-xl">
+            {aiVerdict}
+          </p>
           <div className="text-xs text-slate-400 mt-2 flex items-center gap-3">
-            <span>Match Confidence: <strong className="text-emerald-400 font-mono">{confidenceScore}%</strong></span>
-            <span>Target National Code: <strong className="text-cyan-300 font-mono">{suggestedNationalCode}</strong></span>
+            <span>
+              Match Confidence:{" "}
+              <strong className="text-emerald-400 font-mono">
+                {confidenceScore}%
+              </strong>
+            </span>
+            <span>
+              Target National Code:{" "}
+              <strong className="text-cyan-300 font-mono">
+                {suggestedNationalCode}
+              </strong>
+            </span>
           </div>
         </div>
 
@@ -163,7 +236,6 @@ export const ComparisonPanel = ({ comparisonData, onCreateMapping }) => {
           Create National Mapping
         </Button>
       </div>
-
     </div>
   );
 };

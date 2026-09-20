@@ -1,4 +1,4 @@
-import { Search, RotateCcw } from 'lucide-react';
+import { Search, RotateCcw } from "lucide-react";
 
 export const MaterialFilters = ({
   search,
@@ -10,9 +10,11 @@ export const MaterialFilters = ({
   status,
   onStatusChange,
   onReset,
-  cpses = []
+  cpses = [],
 }) => {
-  const sectors = Array.from(new Set(cpses.map(c => c.sector).filter(Boolean)));
+  const sectors = Array.from(
+    new Set(cpses.map((c) => c.sector).filter(Boolean)),
+  );
 
   return (
     <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs space-y-3 mb-5">
@@ -78,7 +80,9 @@ export const MaterialFilters = ({
 
       {/* Reset Bar */}
       <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
-        <span className="text-slate-400 font-medium">Filter parameters active</span>
+        <span className="text-slate-400 font-medium">
+          Filter parameters active
+        </span>
         <button
           onClick={onReset}
           className="text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 hover:underline cursor-pointer"

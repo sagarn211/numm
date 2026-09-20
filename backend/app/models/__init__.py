@@ -20,3 +20,4 @@ from app.models.demand_record import DemandRecord
 from app.models.taxonomy_code import TaxonomyCode
 from app.models.import_dead_letter import ImportDeadLetter
 from app.models.procurement_record import ProcurementRecord
+from app.models.notification import Notification

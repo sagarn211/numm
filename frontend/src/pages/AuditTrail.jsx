@@ -1,44 +1,58 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Activity, Download, FileText, Search, User, Clock, ShieldCheck, ShieldAlert } from 'lucide-react';
-import { nationalMaterialApi } from '../services/nationalMaterialApi';
-import { Loading } from '../components/common/Loading';
-import { EmptyState } from '../components/common/EmptyState';
-import { getCPSEBadgeColor } from '../utils/formatters';
-import { exportApi } from '../services/exportApi';
-import { Button } from '../components/common/Button';
+import { useCallback, useEffect, useState } from "react";
+import {
+  Activity,
+  Download,
+  FileText,
+  Search,
+  User,
+  Clock,
+  ShieldCheck,
+  ShieldAlert,
+} from "lucide-react";
+import { nationalMaterialApi } from "../services/nationalMaterialApi";
+import { Loading } from "../components/common/Loading";
+import { EmptyState } from "../components/common/EmptyState";
+import { getCPSEBadgeColor } from "../utils/formatters";
+import { exportApi } from "../services/exportApi";
+import { Button } from "../components/common/Button";
 
 export const AuditTrail = () => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [cpseFilter, setCpseFilter] = useState('ALL');
-  const [search, setSearch] = useState('');
+  const [cpseFilter, setCpseFilter] = useState("ALL");
+  const [search, setSearch] = useState("");
   const [integrity, setIntegrity] = useState(null);
-  const [error, setError] = useState('');
-  const [exporting, setExporting] = useState('');
+  const [error, setError] = useState("");
+  const [exporting, setExporting] = useState("");
 
-  const downloadReport = async format => {
+  const downloadReport = async (format) => {
     setExporting(format);
-    setError('');
+    setError("");
     try {
       const response = await exportApi.governanceReport(format);
-      const url = URL.createObjectURL(new Blob([response.data], { type: response.headers['content-type'] }));
-      const link = document.createElement('a');
+      const url = URL.createObjectURL(
+        new Blob([response.data], { type: response.headers["content-type"] }),
+      );
+      const link = document.createElement("a");
       link.href = url;
-      link.download = `numm_governance_report.${format === 'docx' ? 'docx' : 'pdf'}`;
+      link.download = `numm_governance_report.${format === "docx" ? "docx" : "pdf"}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Unable to generate the governance report.');
+      setError(
+        err?.response?.data?.detail ||
+          "Unable to generate the governance report.",
+      );
     } finally {
-      setExporting('');
+      setExporting("");
     }
   };
 
   const loadAuditLogs = useCallback(async () => {
     setLoading(true);
-    setError('');
+    setError("");
     try {
       const [res, verification] = await Promise.all([
         nationalMaterialApi.getAuditTrail({ cpse: cpseFilter, search }),
@@ -49,7 +63,11 @@ export const AuditTrail = () => {
     } catch (err) {
       setLogs([]);
       setIntegrity(null);
-      setError(err?.response?.data?.detail || err.message || 'Failed to load the governance ledger.');
+      setError(
+        err?.response?.data?.detail ||
+          err.message ||
+          "Failed to load the governance ledger.",
+      );
     } finally {
       setLoading(false);
     }
@@ -61,27 +79,64 @@ export const AuditTrail = () => {
 
   return (
     <div className="space-y-6">
-      
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 tracking-tight">Audit & Governance Trail</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Immutable record of all system events, data ingestions, AI recommendations, and officer approval actions</p>
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+            Audit & Governance Trail
+          </h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Immutable record of all system events, data ingestions, AI
+            recommendations, and officer approval actions
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="secondary" icon={FileText} loading={exporting === 'docx'} onClick={() => downloadReport('docx')}>Export Word</Button>
-          <Button size="sm" icon={Download} loading={exporting === 'pdf'} onClick={() => downloadReport('pdf')}>Export PDF</Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            icon={FileText}
+            loading={exporting === "docx"}
+            onClick={() => downloadReport("docx")}
+          >
+            Export Word
+          </Button>
+          <Button
+            size="sm"
+            icon={Download}
+            loading={exporting === "pdf"}
+            onClick={() => downloadReport("pdf")}
+          >
+            Export PDF
+          </Button>
         </div>
       </div>
 
-      {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700">{error}</div>}
-      {integrity && <div className={`flex items-center gap-3 rounded-xl border p-4 ${integrity.status === 'VALID' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-rose-200 bg-rose-50 text-rose-800'}`}>
-        {integrity.status === 'VALID' ? <ShieldCheck className="h-5 w-5" /> : <ShieldAlert className="h-5 w-5" />}
-        <div>
-          <div className="text-xs font-bold">Tamper-Evident Governance Ledger: {integrity.status}</div>
-          <div className="text-[11px]">{integrity.hashed_records_checked} hashed events verified; {integrity.legacy_unhashed_records} legacy events remain outside the cryptographic boundary.</div>
+      {error && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700">
+          {error}
         </div>
-      </div>}
+      )}
+      {integrity && (
+        <div
+          className={`flex items-center gap-3 rounded-xl border p-4 ${integrity.status === "VALID" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}
+        >
+          {integrity.status === "VALID" ? (
+            <ShieldCheck className="h-5 w-5" />
+          ) : (
+            <ShieldAlert className="h-5 w-5" />
+          )}
+          <div>
+            <div className="text-xs font-bold">
+              Tamper-Evident Governance Ledger: {integrity.status}
+            </div>
+            <div className="text-[11px]">
+              {integrity.hashed_records_checked} hashed events verified;{" "}
+              {integrity.legacy_unhashed_records} legacy events remain outside
+              the cryptographic boundary.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filter Bar */}
       <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -137,17 +192,24 @@ export const AuditTrail = () => {
                   <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-4 space-y-2 hover:bg-white hover:shadow-xs transition-all">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${badgeClass}`}>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded border ${badgeClass}`}
+                        >
                           {log.cpse}
                         </span>
-                        <span className="text-xs font-bold text-slate-900">{log.action}</span>
+                        <span className="text-xs font-bold text-slate-900">
+                          {log.action}
+                        </span>
                       </div>
                       <span className="text-xs text-slate-400 font-mono flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5 text-slate-400" /> {log.timestamp}
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />{" "}
+                        {log.timestamp}
                       </span>
                     </div>
 
-                    <p className="text-xs font-medium text-slate-800">{log.details}</p>
+                    <p className="text-xs font-medium text-slate-800">
+                      {log.details}
+                    </p>
 
                     <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-200/60 font-mono">
                       <span className="flex items-center gap-1 text-slate-700 font-sans font-semibold">
@@ -162,7 +224,6 @@ export const AuditTrail = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };

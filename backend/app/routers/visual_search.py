@@ -11,7 +11,7 @@ from app.models.national_material import NationalMaterial
 from app.models.cpse import CPSE
 from app.models.user import User
 from app.services.image_storage_service import upload_image
-from app.utils.rbac import ensure_cpse_access, require_permission
+from app.utils.rbac import can_discover_materials_across_cpses, ensure_cpse_access, require_permission
 
 router = APIRouter(tags=["Visual material discovery"])
 WARNING = "Visual similarity is for candidate discovery only. Technical validation is required."
@@ -67,7 +67,7 @@ async def visual_search(file: UploadFile = File(...), top_k: int = Form(5), db: 
     candidates = []
     for candidate in result.get("candidates", []):
         material = db.query(Material).filter(Material.id == candidate.get("material_id")).first()
-        if not material or (current_user.cpse_id is not None and material.cpse_id != current_user.cpse_id): continue
+        if not material or (not can_discover_materials_across_cpses(current_user) and current_user.cpse_id is not None and material.cpse_id != current_user.cpse_id): continue
         mapping = db.query(MaterialMapping).filter(MaterialMapping.material_id == material.id).first()
         national = db.query(NationalMaterial).filter(NationalMaterial.id == mapping.national_material_id).first() if mapping else None
         cpse = db.query(CPSE).filter(CPSE.id == material.cpse_id).first()

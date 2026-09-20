@@ -1,1 +1,0 @@
-{"nodes": [{"id": "$graphify-root$_backend_app_middleware_auth_middleware_py", "label": "auth_middleware.py", "file_type": "code", "source_file": "backend/app/middleware/auth_middleware.py", "source_location": "L1"}], "edges": [], "raw_calls": []}

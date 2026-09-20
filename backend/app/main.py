@@ -12,7 +12,7 @@ from app.middleware.error_middleware import error_middleware
 from app.middleware.logging_middleware import logging_middleware
 from app.routers import (
     auth, cpses, materials, imports, matching, approvals, national_materials,
-    inventory, requests, audit, dashboard, integrations, data_quality, demand, exports, users
+    inventory, requests, audit, dashboard, integrations, data_quality, demand, exports, users, notifications
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -47,7 +47,7 @@ for router in [
     auth.router, cpses.router, materials.router, imports.router, matching.router,
     approvals.router, national_materials.router, inventory.router, requests.router,
     audit.router, dashboard.router, integrations.router, data_quality.router,
-    demand.router, exports.router, users.router, visual_search.router,
+    demand.router, exports.router, users.router, visual_search.router, notifications.router,
 ]:
     app.include_router(router)
 

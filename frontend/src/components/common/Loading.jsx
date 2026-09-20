@@ -1,7 +1,11 @@
-import { Loader2, Sparkles, Cpu } from 'lucide-react';
+import { Loader2, Sparkles, Cpu } from "lucide-react";
 
-export const Loading = ({ type = 'spinner', text = 'Loading data...', rows = 4 }) => {
-  if (type === 'ai') {
+export const Loading = ({
+  type = "spinner",
+  text = "Loading data...",
+  rows = 4,
+}) => {
+  if (type === "ai") {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center bg-gradient-to-b from-indigo-50/50 to-cyan-50/50 rounded-xl border border-indigo-100">
         <div className="relative mb-4">
@@ -10,13 +14,18 @@ export const Loading = ({ type = 'spinner', text = 'Loading data...', rows = 4 }
           </div>
           <Sparkles className="w-5 h-5 text-amber-400 absolute -top-1 -right-1 animate-bounce" />
         </div>
-        <h4 className="text-base font-semibold text-slate-800">{text || 'AI Engine analyzing material relationships...'}</h4>
-        <p className="text-xs text-slate-500 mt-1 max-w-sm">Comparing technical specifications, standardizing UOMs, and identifying candidate clusters across CPSE records.</p>
+        <h4 className="text-base font-semibold text-slate-800">
+          {text || "AI Engine analyzing material relationships..."}
+        </h4>
+        <p className="text-xs text-slate-500 mt-1 max-w-sm">
+          Comparing technical specifications, standardizing UOMs, and
+          identifying candidate clusters across CPSE records.
+        </p>
       </div>
     );
   }
 
-  if (type === 'skeleton') {
+  if (type === "skeleton") {
     return (
       <div className="w-full space-y-3 animate-pulse">
         {Array.from({ length: rows }).map((_, idx) => (

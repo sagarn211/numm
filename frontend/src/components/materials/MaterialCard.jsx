@@ -1,15 +1,13 @@
-import { GitCompare, Globe2, Sparkles, FileText } from 'lucide-react';
-import { Modal } from '../common/Modal';
-import { Button } from '../common/Button';
-import { getCPSEBadgeColor, getStatusBadgeColor, formatConfidence } from '../../utils/formatters';
+import { GitCompare, Globe2, Sparkles, FileText } from "lucide-react";
+import { Modal } from "../common/Modal";
+import { Button } from "../common/Button";
+import {
+  getCPSEBadgeColor,
+  getStatusBadgeColor,
+  formatConfidence,
+} from "../../utils/formatters";
 
-export const MaterialCard = ({
-  material,
-  open,
-  onClose,
-  onCompare,
-  onMap
-}) => {
+export const MaterialCard = ({ material, open, onClose, onCompare, onMap }) => {
   if (!material) return null;
 
   const cpseBadge = getCPSEBadgeColor(material.cpse);
@@ -24,10 +22,20 @@ export const MaterialCard = ({
       maxWidth="max-w-3xl"
       actions={
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" icon={GitCompare} onClick={() => onCompare(material)}>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={GitCompare}
+            onClick={() => onCompare(material)}
+          >
             Compare Specs
           </Button>
-          <Button variant="primary" size="sm" icon={Globe2} onClick={() => onMap(material)}>
+          <Button
+            variant="primary"
+            size="sm"
+            icon={Globe2}
+            onClick={() => onMap(material)}
+          >
             Map to National Code
           </Button>
         </div>
@@ -38,16 +46,26 @@ export const MaterialCard = ({
         <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className={`text-xs font-bold px-2 py-0.5 rounded border ${cpseBadge}`}>
+              <span
+                className={`text-xs font-bold px-2 py-0.5 rounded border ${cpseBadge}`}
+              >
                 {material.cpse}
               </span>
-              <span className="text-xs text-slate-500 font-medium">Category: {material.category}</span>
+              <span className="text-xs text-slate-500 font-medium">
+                Category: {material.category}
+              </span>
             </div>
-            <h3 className="text-base font-bold text-slate-900 mt-1">{material.description}</h3>
+            <h3 className="text-base font-bold text-slate-900 mt-1">
+              {material.description}
+            </h3>
           </div>
           <div className="text-right shrink-0">
-            <div className="text-[10px] font-bold text-slate-400 uppercase">Current Match Status</div>
-            <span className={`inline-block mt-0.5 text-xs font-bold px-2.5 py-1 rounded-full border ${statusBadge}`}>
+            <div className="text-[10px] font-bold text-slate-400 uppercase">
+              Current Match Status
+            </div>
+            <span
+              className={`inline-block mt-0.5 text-xs font-bold px-2.5 py-1 rounded-full border ${statusBadge}`}
+            >
               {material.matchStatus}
             </span>
           </div>
@@ -67,20 +85,36 @@ export const MaterialCard = ({
         {/* Metadata Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
           <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-            <div className="text-[10px] text-slate-400 font-bold uppercase">Unit of Measure (UOM)</div>
-            <div className="text-sm font-extrabold text-slate-900 font-mono mt-0.5">{material.uom}</div>
+            <div className="text-[10px] text-slate-400 font-bold uppercase">
+              Unit of Measure (UOM)
+            </div>
+            <div className="text-sm font-extrabold text-slate-900 font-mono mt-0.5">
+              {material.uom}
+            </div>
           </div>
           <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-            <div className="text-[10px] text-slate-400 font-bold uppercase">Material Grade</div>
-            <div className="text-sm font-extrabold text-slate-900 font-mono mt-0.5">{material.grade || 'SS316'}</div>
+            <div className="text-[10px] text-slate-400 font-bold uppercase">
+              Material Grade
+            </div>
+            <div className="text-sm font-extrabold text-slate-900 font-mono mt-0.5">
+              {material.grade || "SS316"}
+            </div>
           </div>
           <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-            <div className="text-[10px] text-slate-400 font-bold uppercase">Nominal Dimension</div>
-            <div className="text-sm font-extrabold text-slate-900 font-mono mt-0.5">{material.size || 'DN50 / 2"'}</div>
+            <div className="text-[10px] text-slate-400 font-bold uppercase">
+              Nominal Dimension
+            </div>
+            <div className="text-sm font-extrabold text-slate-900 font-mono mt-0.5">
+              {material.size || 'DN50 / 2"'}
+            </div>
           </div>
           <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-            <div className="text-[10px] text-slate-400 font-bold uppercase">Manufacturer</div>
-            <div className="text-sm font-extrabold text-slate-900 mt-0.5 truncate">{material.manufacturer || 'Industrial Grade'}</div>
+            <div className="text-[10px] text-slate-400 font-bold uppercase">
+              Manufacturer
+            </div>
+            <div className="text-sm font-extrabold text-slate-900 mt-0.5 truncate">
+              {material.manufacturer || "Industrial Grade"}
+            </div>
           </div>
         </div>
 
@@ -90,14 +124,20 @@ export const MaterialCard = ({
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-cyan-600" />
-                <span className="font-bold text-slate-900">National Material Mapping Candidate</span>
+                <span className="font-bold text-slate-900">
+                  National Material Mapping Candidate
+                </span>
               </div>
               <span className="font-bold text-cyan-700 bg-cyan-100 px-2 py-0.5 rounded font-mono">
                 {material.nationalCode}
               </span>
             </div>
             <p className="text-slate-600">
-              AI Confidence Score: <strong className="text-emerald-700">{formatConfidence(material.confidence)}</strong>. Matches National Standard SS316 Ball Valve DN50 PN16.
+              AI Confidence Score:{" "}
+              <strong className="text-emerald-700">
+                {formatConfidence(material.confidence)}
+              </strong>
+              . Matches National Standard SS316 Ball Valve DN50 PN16.
             </p>
           </div>
         )}

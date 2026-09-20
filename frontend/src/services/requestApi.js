@@ -1,2 +1,15 @@
-import { api } from './api';
-export const requestApi={getAll:()=>api.get('/api/requests'),getById:(id)=>api.get(`/api/requests/${id}`),create:(requesting_cpse_id)=>api.post('/api/requests',{requesting_cpse_id}),createDirectMaterial:(d)=>api.post('/api/requests/direct-material',d),addItem:(id,d)=>api.post(`/api/requests/${id}/items`,d),removeItem:(r,i)=>api.delete(`/api/requests/${r}/items/${i}`),previewAllocation:(id)=>api.post(`/api/requests/${id}/preview-allocation`),submit:(id)=>api.post(`/api/requests/${id}/submit`),approve:(id)=>api.post(`/api/requests/${id}/approve`),reject:(id)=>api.post(`/api/requests/${id}/reject`),fulfill:(id)=>api.post(`/api/requests/${id}/fulfill`)};
+import { api } from "./api";
+export const requestApi = {
+  getAll: () => api.get("/api/requests"),
+  getById: (id) => api.get(`/api/requests/${id}`),
+  create: (requesting_cpse_id) =>
+    api.post("/api/requests", { requesting_cpse_id }),
+  createDirectMaterial: (d) => api.post("/api/requests/direct-material", d),
+  addItem: (id, d) => api.post(`/api/requests/${id}/items`, d),
+  removeItem: (r, i) => api.delete(`/api/requests/${r}/items/${i}`),
+  previewAllocation: (id) => api.post(`/api/requests/${id}/preview-allocation`),
+  submit: (id) => api.post(`/api/requests/${id}/submit`),
+  approve: (id) => api.post(`/api/requests/${id}/approve`),
+  reject: (id) => api.post(`/api/requests/${id}/reject`),
+  fulfill: (id) => api.post(`/api/requests/${id}/fulfill`),
+};

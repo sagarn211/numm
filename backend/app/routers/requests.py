@@ -12,6 +12,7 @@ from app.schemas.request import RequestCreate, RequestItemCreate, DirectMaterial
 from app.services.request_service import create_request, add_item, submit_request, approve_request, reject_request, fulfill_request
 from app.services.allocation_service import preview_allocation
 from app.services.audit_service import write_audit
+from app.services.notification_service import notify_cpse_users, notify_user
 from app.utils.rbac import has_permission, is_system_admin, require_permission, ensure_cpse_access
 
 router = APIRouter(prefix="/api/requests", tags=["Material Requests"])
@@ -154,6 +155,13 @@ def submit(
 ):
     _ensure_can_edit(current_user, _request_or_404(db, request_id))
     request = submit_request(db, request_id)
+    notify_cpse_users(
+        db, request.requesting_cpse_id, "REQUEST_SUBMITTED",
+        "Material request submitted",
+        f"{request.request_number} has been submitted for review.",
+        link="/requests", exclude_user_id=current_user.id,
+    )
+    db.commit()
     write_audit(db, "REQUEST_SUBMITTED", "MaterialRequest", request.id, current_user.id)
     db.refresh(request)
     return request
@@ -168,6 +176,18 @@ def approve(
     if request.requested_by == current_user.id:
         raise HTTPException(403, "Maker-checker rule: you cannot approve your own request")
     request = approve_request(db, request_id, current_user.id)
+    if request.requested_by:
+        notify_user(
+            db, request.requested_by, "REQUEST_APPROVED", "Material request approved",
+            f"{request.request_number} is {request.status.replace('_', ' ').lower()}.",
+            cpse_id=request.requesting_cpse_id, link="/requests",
+        )
+    notify_cpse_users(
+        db, request.requesting_cpse_id, "REQUEST_APPROVED", "Material request approved",
+        f"{request.request_number} is {request.status.replace('_', ' ').lower()}.",
+        link="/requests", exclude_user_id=request.requested_by,
+    )
+    db.commit()
     write_audit(db, "REQUEST_APPROVED", "MaterialRequest", request.id, current_user.id)
     db.refresh(request)
     return request
@@ -182,6 +202,18 @@ def reject(
     if request.requested_by == current_user.id:
         raise HTTPException(403, "Maker-checker rule: you cannot reject your own request")
     request = reject_request(db, request_id)
+    if request.requested_by:
+        notify_user(
+            db, request.requested_by, "REQUEST_REJECTED", "Material request rejected",
+            f"{request.request_number} was rejected and any reserved stock was released.",
+            cpse_id=request.requesting_cpse_id, link="/requests",
+        )
+    notify_cpse_users(
+        db, request.requesting_cpse_id, "REQUEST_REJECTED", "Material request rejected",
+        f"{request.request_number} was rejected and any reserved stock was released.",
+        link="/requests", exclude_user_id=request.requested_by,
+    )
+    db.commit()
     write_audit(db, "REQUEST_REJECTED", "MaterialRequest", request.id, current_user.id)
     db.refresh(request)
     return request
@@ -193,6 +225,18 @@ def fulfill(
     current_user: User = Depends(require_permission("request.fulfill")),
 ):
     request = fulfill_request(db, request_id)
+    if request.requested_by:
+        notify_user(
+            db, request.requested_by, "REQUEST_FULFILLED", "Material request fulfilled",
+            f"{request.request_number} has been fulfilled.",
+            cpse_id=request.requesting_cpse_id, link="/requests",
+        )
+    notify_cpse_users(
+        db, request.requesting_cpse_id, "REQUEST_FULFILLED", "Material request fulfilled",
+        f"{request.request_number} has been fulfilled.",
+        link="/requests", exclude_user_id=request.requested_by,
+    )
+    db.commit()
     write_audit(db, "REQUEST_FULFILLED", "MaterialRequest", request.id, current_user.id)
     db.refresh(request)
     return request

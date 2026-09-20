@@ -8,6 +8,7 @@ from app.models.cpse import CPSE
 from app.models.user import User
 from app.schemas.user_admin import UserAccountApproval, UserAccountRejection, UserRoleUpdate
 from app.services.audit_service import write_audit
+from app.services.notification_service import notify_user
 from app.utils.rbac import (
     CPSE_DATA_MANAGER,
     PENDING_USER,
@@ -61,7 +62,7 @@ def update_role(
         raise HTTPException(409, "Pending accounts must be approved or rejected through the account-request workflow")
 
     role = public_role(payload.role)
-    if role in {CPSE_DATA_MANAGER, REQUESTING_OFFICER, "CPSE_OFFICER"}:
+    if role in {CPSE_DATA_MANAGER, REQUESTING_OFFICER, "PROCUREMENT_OFFICER", "CPSE_OFFICER"}:
         if payload.cpse_id is None:
             raise HTTPException(400, "This role requires a CPSE assignment")
         if not db.query(CPSE).filter(CPSE.id == payload.cpse_id).first():
@@ -75,7 +76,7 @@ def update_role(
     previous_role = canonical_role(user.role)
     previous_cpse = user.cpse_id
     user.role = role
-    if role not in {CPSE_DATA_MANAGER, REQUESTING_OFFICER, "CPSE_OFFICER"}:
+    if role not in {CPSE_DATA_MANAGER, REQUESTING_OFFICER, "PROCUREMENT_OFFICER", "CPSE_OFFICER"}:
         user.cpse_id = None
     elif "cpse_id" in payload.model_fields_set:
         user.cpse_id = payload.cpse_id
@@ -94,7 +95,7 @@ def update_role(
 
 
 def _validate_approval_assignment(db: Session, role: str, cpse_id: int | None) -> None:
-    if role in {CPSE_DATA_MANAGER, REQUESTING_OFFICER, "CPSE_OFFICER"}:
+    if role in {CPSE_DATA_MANAGER, REQUESTING_OFFICER, "PROCUREMENT_OFFICER", "CPSE_OFFICER"}:
         if cpse_id is None:
             raise HTTPException(400, "This role requires a CPSE assignment")
         if not db.query(CPSE).filter(CPSE.id == cpse_id).first():
@@ -119,12 +120,18 @@ def approve_account(
     cpse_id = payload.cpse_id if payload.cpse_id is not None else user.requested_cpse_id
     _validate_approval_assignment(db, role, cpse_id)
     user.role = role
-    user.cpse_id = cpse_id if role in {CPSE_DATA_MANAGER, REQUESTING_OFFICER, "CPSE_OFFICER"} else None
+    user.cpse_id = cpse_id if role in {CPSE_DATA_MANAGER, REQUESTING_OFFICER, "PROCUREMENT_OFFICER", "CPSE_OFFICER"} else None
     user.account_status = "APPROVED"
     user.reviewed_by = current_user.id
     user.reviewed_at = datetime.utcnow()
     user.review_comment = (payload.comment or "").strip() or None
     db.commit(); db.refresh(user)
+    notify_user(
+        db, user.id, "ACCOUNT_APPROVED", "Account request approved",
+        "Your account request has been approved. You can now sign in.",
+        cpse_id=user.cpse_id, link="/dashboard",
+    )
+    db.commit()
     write_audit(db, "USER_ACCOUNT_APPROVED", "User", user.id, current_user.id, {"role": role, "cpse_id": user.cpse_id, "comment": user.review_comment})
     return user_data(user)
 
@@ -146,5 +153,11 @@ def reject_account(
     user.reviewed_at = datetime.utcnow()
     user.review_comment = (payload.comment or "").strip() or None
     db.commit(); db.refresh(user)
+    notify_user(
+        db, user.id, "ACCOUNT_REJECTED", "Account request not approved",
+        "Your account request was not approved. Contact a system administrator for assistance.",
+        link="/login",
+    )
+    db.commit()
     write_audit(db, "USER_ACCOUNT_REJECTED", "User", user.id, current_user.id, {"comment": user.review_comment})
     return user_data(user)

@@ -1,51 +1,419 @@
-import { useEffect, useMemo, useState } from 'react';
-import { BarChart3, ChevronDown, Database, TrendingDown, TrendingUp } from 'lucide-react';
-import { priceIntelligenceApi } from '../../services/priceIntelligenceApi';
+import { useEffect, useMemo, useState } from "react";
+import {
+  BarChart3,
+  ChevronDown,
+  Database,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
+import { priceIntelligenceApi } from "../../services/priceIntelligenceApi";
 
-const money = (value, currency) => value == null ? '-' : new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2, style: 'currency', currency: currency || 'INR' }).format(value);
+const money = (value, currency) =>
+  value == null
+    ? "-"
+    : new Intl.NumberFormat("en-IN", {
+        maximumFractionDigits: 2,
+        style: "currency",
+        currency: currency || "INR",
+      }).format(value);
 
 function TrendChart({ series, type, currency }) {
-  if (!series.length) return <div className="mt-5 flex h-52 items-center justify-center rounded-xl border border-dashed border-[#d8c2ad] text-xs text-[#6e625b]">No compatible historical periods are available.</div>;
-  const values = series.map(point => Number(type === 'volume' ? point.total_quantity : point.weighted_avg_unit_price));
-  const rawLow = Math.min(...values), rawHigh = Math.max(...values);
-  const padding = rawHigh === rawLow ? Math.max(rawHigh * 0.08, 1) : (rawHigh - rawLow) * 0.16;
-  const low = Math.max(0, rawLow - padding), high = rawHigh + padding, span = high - low || 1;
-  const width = 720, height = 250, left = 58, right = 18, top = 18, bottom = 42;
-  const plotWidth = width - left - right, plotHeight = height - top - bottom;
-  const pointFor = (value, index) => ({ x: left + (index / Math.max(values.length - 1, 1)) * plotWidth, y: top + (1 - (value - low) / span) * plotHeight });
+  if (!series.length)
+    return (
+      <div className="mt-5 flex h-52 items-center justify-center rounded-xl border border-dashed border-[#d8c2ad] text-xs text-[#6e625b]">
+        No compatible historical periods are available.
+      </div>
+    );
+  const values = series.map((point) =>
+    Number(
+      type === "volume" ? point.total_quantity : point.weighted_avg_unit_price,
+    ),
+  );
+  const rawLow = Math.min(...values),
+    rawHigh = Math.max(...values);
+  const padding =
+    rawHigh === rawLow
+      ? Math.max(rawHigh * 0.08, 1)
+      : (rawHigh - rawLow) * 0.16;
+  const low = Math.max(0, rawLow - padding),
+    high = rawHigh + padding,
+    span = high - low || 1;
+  const width = 720,
+    height = 250,
+    left = 58,
+    right = 18,
+    top = 18,
+    bottom = 42;
+  const plotWidth = width - left - right,
+    plotHeight = height - top - bottom;
+  const pointFor = (value, index) => ({
+    x: left + (index / Math.max(values.length - 1, 1)) * plotWidth,
+    y: top + (1 - (value - low) / span) * plotHeight,
+  });
   const points = values.map(pointFor);
-  const line = points.map(point => `${point.x},${point.y}`).join(' ');
+  const line = points.map((point) => `${point.x},${point.y}`).join(" ");
   const area = `${left},${top + plotHeight} ${line} ${left + plotWidth},${top + plotHeight}`;
-  const ticks = Array.from({ length: 4 }, (_, index) => low + (span * index / 3));
-  const formatValue = value => type === 'volume' ? Math.round(value).toLocaleString('en-IN') : money(value, currency);
-  const xLabels = series.length <= 6 ? series : [series[0], series[Math.floor((series.length - 1) / 2)], series[series.length - 1]];
-  return <div className="mt-5 rounded-xl border border-[#eadfce] bg-[#fffdfb] p-4">
-    <div className="mb-3 flex items-start justify-between gap-4"><div><p className="text-xs font-bold text-[#2f261f]">{type === 'volume' ? 'Historical Purchase Volume' : 'Historical Procurement Price Trend'}</p><p className="mt-0.5 text-[10px] text-[#7a6d63]">Monthly quantity-weighted procurement history</p></div><div className="rounded-md bg-[#edf3ea] px-2 py-1 text-right"><p className="text-[9px] font-bold uppercase tracking-wide text-[#536d50]">Latest</p><p className="text-xs font-black text-[#2f261f]">{formatValue(values[values.length - 1])}</p></div></div>
-    <svg viewBox={`0 0 ${width} ${height}`} className="h-56 w-full" role="img" aria-label="Historical procurement trend">
-      <defs><linearGradient id="priceTrendFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#7d8f72" stopOpacity="0.24" /><stop offset="100%" stopColor="#7d8f72" stopOpacity="0.02" /></linearGradient></defs>
-      {ticks.map((tick, index) => { const y = top + (1 - (tick - low) / span) * plotHeight; return <g key={index}><line x1={left} x2={width - right} y1={y} y2={y} stroke="#eadfce" strokeDasharray="3 4" /><text x={left - 8} y={y + 3} textAnchor="end" fill="#7a6d63" fontSize="10">{formatValue(tick)}</text></g>; })}
-      <polygon points={area} fill="url(#priceTrendFill)" />
-      <polyline points={line} fill="none" stroke="#637e59" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-      {points.map((point, index) => <circle key={series[index].period} cx={point.x} cy={point.y} r="4" fill="#fffdfb" stroke="#8b634e" strokeWidth="2"><title>{`${series[index].period}: ${formatValue(values[index])}; ${series[index].transaction_count} transactions`}</title></circle>)}
-      {xLabels.map(item => { const index = series.indexOf(item); const x = points[index].x; return <text key={item.period} x={x} y={height - 16} textAnchor={index === 0 ? 'start' : index === series.length - 1 ? 'end' : 'middle'} fill="#7a6d63" fontSize="10">{item.period}</text>; })}
-    </svg>
-  </div>;
+  const ticks = Array.from(
+    { length: 4 },
+    (_, index) => low + (span * index) / 3,
+  );
+  const formatValue = (value) =>
+    type === "volume"
+      ? Math.round(value).toLocaleString("en-IN")
+      : money(value, currency);
+  const xLabels =
+    series.length <= 6
+      ? series
+      : [
+          series[0],
+          series[Math.floor((series.length - 1) / 2)],
+          series[series.length - 1],
+        ];
+  return (
+    <div className="mt-5 rounded-xl border border-[#eadfce] bg-[#fffdfb] p-4">
+      <div className="mb-3 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold text-[#2f261f]">
+            {type === "volume"
+              ? "Historical Purchase Volume"
+              : "Historical Procurement Price Trend"}
+          </p>
+          <p className="mt-0.5 text-[10px] text-[#7a6d63]">
+            Monthly quantity-weighted procurement history
+          </p>
+        </div>
+        <div className="rounded-md bg-[#edf3ea] px-2 py-1 text-right">
+          <p className="text-[9px] font-bold uppercase tracking-wide text-[#536d50]">
+            Latest
+          </p>
+          <p className="text-xs font-black text-[#2f261f]">
+            {formatValue(values[values.length - 1])}
+          </p>
+        </div>
+      </div>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="h-56 w-full"
+        role="img"
+        aria-label="Historical procurement trend"
+      >
+        <defs>
+          <linearGradient id="priceTrendFill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#7d8f72" stopOpacity="0.24" />
+            <stop offset="100%" stopColor="#7d8f72" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        {ticks.map((tick, index) => {
+          const y = top + (1 - (tick - low) / span) * plotHeight;
+          return (
+            <g key={index}>
+              <line
+                x1={left}
+                x2={width - right}
+                y1={y}
+                y2={y}
+                stroke="#eadfce"
+                strokeDasharray="3 4"
+              />
+              <text
+                x={left - 8}
+                y={y + 3}
+                textAnchor="end"
+                fill="#7a6d63"
+                fontSize="10"
+              >
+                {formatValue(tick)}
+              </text>
+            </g>
+          );
+        })}
+        <polygon points={area} fill="url(#priceTrendFill)" />
+        <polyline
+          points={line}
+          fill="none"
+          stroke="#637e59"
+          strokeWidth="3"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+        {points.map((point, index) => (
+          <circle
+            key={series[index].period}
+            cx={point.x}
+            cy={point.y}
+            r="4"
+            fill="#fffdfb"
+            stroke="#8b634e"
+            strokeWidth="2"
+          >
+            <title>{`${series[index].period}: ${formatValue(values[index])}; ${series[index].transaction_count} transactions`}</title>
+          </circle>
+        ))}
+        {xLabels.map((item) => {
+          const index = series.indexOf(item);
+          const x = points[index].x;
+          return (
+            <text
+              key={item.period}
+              x={x}
+              y={height - 16}
+              textAnchor={
+                index === 0
+                  ? "start"
+                  : index === series.length - 1
+                    ? "end"
+                    : "middle"
+              }
+              fill="#7a6d63"
+              fontSize="10"
+            >
+              {item.period}
+            </text>
+          );
+        })}
+      </svg>
+    </div>
+  );
 }
 
 export function ProcurementPriceIntelligence() {
-  const [materials, setMaterials] = useState([]); const [selected, setSelected] = useState(null);
-  const [detail, setDetail] = useState(null); const [range, setRange] = useState('12m'); const [tab, setTab] = useState('trend');
-  const [loading, setLoading] = useState(true); const [error, setError] = useState('');
-  useEffect(() => { priceIntelligenceApi.materials().then(r => { const entries = r.data.items || []; setMaterials(entries); setSelected(entries[0] || null); }).catch(() => setError('Unable to load procurement price intelligence.')).finally(() => setLoading(false)); }, []);
-  useEffect(() => { if (!selected) return; setDetail(null); priceIntelligenceApi.detail(selected.national_material_id, { range }).then(r => setDetail(r.data)).catch(() => setError('Unable to load the selected material.')); }, [selected, range]);
-  const indicator = detail?.direction === 'UP' ? <TrendingUp className="h-3.5 w-3.5" /> : detail?.direction === 'DOWN' ? <TrendingDown className="h-3.5 w-3.5" /> : <span>-</span>;
-  const changeClass = detail?.direction === 'UP' ? 'text-[#a85d52]' : detail?.direction === 'DOWN' ? 'text-[#5b7857]' : 'text-[#7a6d63]';
+  const [materials, setMaterials] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [range, setRange] = useState("12m");
+  const [tab, setTab] = useState("trend");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    priceIntelligenceApi
+      .materials()
+      .then((r) => {
+        const entries = r.data.items || [];
+        setMaterials(entries);
+        setSelected(entries[0] || null);
+      })
+      .catch(() => setError("Unable to load procurement price intelligence."))
+      .finally(() => setLoading(false));
+  }, []);
+  useEffect(() => {
+    if (!selected) return;
+    setDetail(null);
+    priceIntelligenceApi
+      .detail(selected.national_material_id, { range })
+      .then((r) => setDetail(r.data))
+      .catch(() => setError("Unable to load the selected material."));
+  }, [selected, range]);
+  const indicator =
+    detail?.direction === "UP" ? (
+      <TrendingUp className="h-3.5 w-3.5" />
+    ) : detail?.direction === "DOWN" ? (
+      <TrendingDown className="h-3.5 w-3.5" />
+    ) : (
+      <span>-</span>
+    );
+  const changeClass =
+    detail?.direction === "UP"
+      ? "text-[#a85d52]"
+      : detail?.direction === "DOWN"
+        ? "text-[#5b7857]"
+        : "text-[#7a6d63]";
   const bars = useMemo(() => detail?.cpse_comparison || [], [detail]);
-  if (loading) return <div className="min-h-[380px] animate-pulse rounded-xl bg-[#f7f1ea]" />;
-  if (!materials.length) return <div className="flex min-h-[380px] flex-col items-center justify-center rounded-xl border border-dashed border-[#d8c2ad] bg-[#f7f1ea] p-8 text-center"><Database className="mb-3 h-9 w-9 text-[#8b634e]" /><p className="font-bold text-[#2f261f]">No Price History Available</p><p className="mt-2 max-w-sm text-xs text-[#6e625b]">Procurement price intelligence becomes available after procurement history with quantity and unit-price data is imported.</p><a href="/procurement-history" className="mt-4 rounded-lg bg-[#8b634e] px-3 py-2 text-xs font-bold text-white">Import Procurement History</a></div>;
-  return <div className="min-h-[380px]">
-    <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start"><div><h3 className="flex items-center gap-2 text-lg font-bold text-[#2f261f]"><BarChart3 className="h-5 w-5 text-[#6c4738]" />Procurement Price Intelligence</h3><p className="mt-1 text-xs text-[#6e625b]">Historical procurement price movement across harmonized National Materials.</p></div><label className="relative"><span className="sr-only">National Material</span><select value={selected?.national_material_id || ''} onChange={e => setSelected(materials.find(x => x.national_material_id === Number(e.target.value)))} className="max-w-[280px] appearance-none rounded-lg border border-[#d9cab7] bg-[#fffdfb] py-2 pl-3 pr-8 text-xs font-semibold text-[#4c413b]"><option value="">Select National Material</option>{materials.map(item => <option key={item.national_material_id} value={item.national_material_id}>{item.national_code} - {item.description}</option>)}</select><ChevronDown className="pointer-events-none absolute right-2 top-2 h-4 w-4 text-[#6e625b]" /></label></div>
-    {error && <p className="mt-3 text-xs text-rose-700">{error}</p>}
-    {detail && <><div className="mt-4 rounded-xl border border-[#eadfce] bg-[#f7f1ea] p-3"><p className="font-mono text-[11px] font-bold text-[#6c4738]">{detail.national_code}</p><p className="mt-0.5 text-xs font-semibold text-[#2f261f]">{detail.description}</p></div><div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4"><div className="rounded-xl border border-[#eadfce] p-3"><p className="text-[10px] font-bold uppercase text-[#7a6d63]">Latest Avg. Unit Price</p><p className="mt-1 text-lg font-black text-[#2f261f]">{money(detail.latest_weighted_avg, detail.currency)}</p><p className="text-[10px] text-[#6e625b]">/ {detail.uom || '-'}</p></div><div className="rounded-xl border border-[#eadfce] p-3"><p className="text-[10px] font-bold uppercase text-[#7a6d63]">Historical Change</p><p className={`mt-1 flex items-center gap-1 text-lg font-black ${changeClass}`}>{indicator} {detail.change_percent == null ? '-' : `${detail.change_percent}%`}</p><p className="text-[10px] text-[#6e625b]">vs previous period</p></div><div className="rounded-xl border border-[#eadfce] p-3"><p className="text-[10px] font-bold uppercase text-[#7a6d63]">Cross-CPSE Price Spread</p><p className="mt-1 text-lg font-black text-[#2f261f]">{detail.price_spread_percent == null ? '-' : `${detail.price_spread_percent}%`}</p><p className="text-[10px] text-[#6e625b]">{money(detail.minimum_cpse_weighted_price, detail.currency)} - {money(detail.maximum_cpse_weighted_price, detail.currency)}</p></div><div className="rounded-xl border border-[#eadfce] p-3"><p className="text-[10px] font-bold uppercase text-[#7a6d63]">Purchased Quantity</p><p className="mt-1 text-lg font-black text-[#2f261f]">{detail.total_quantity == null ? '-' : detail.total_quantity.toLocaleString()}</p><p className="text-[10px] text-[#6e625b]">{detail.uom || '-'} · {detail.participating_cpse_count} CPSEs</p></div></div><div className="mt-4 flex flex-wrap gap-2">{[['trend', 'Price Trend'], ['comparison', 'CPSE Comparison'], ['volume', 'Procurement Volume']].map(([key, label]) => <button key={key} onClick={() => setTab(key)} className={`rounded-lg px-3 py-1.5 text-[11px] font-bold ${tab === key ? 'bg-[#8b634e] text-white' : 'bg-[#f2e8de] text-[#5c4d45]'}`}>{label}</button>)}<span className="ml-auto flex gap-1">{['3m', '6m', '12m', 'all'].map(item => <button key={item} onClick={() => setRange(item)} className={`rounded px-2 py-1 text-[10px] font-bold ${range === item ? 'bg-[#e3ede0] text-[#4c6b4b]' : 'text-[#6e625b]'}`}>{item.toUpperCase()}</button>)}</span></div>{tab === 'comparison' ? <div className="mt-5 space-y-3">{bars.length ? bars.map(item => <div key={item.cpse_id}><div className="mb-1 flex justify-between text-xs"><span className="font-semibold text-[#4c413b]">{item.cpse_code}</span><span>{money(item.weighted_average, detail.currency)}</span></div><div className="h-2 rounded bg-[#f0e5d9]"><div className="h-2 rounded bg-[#7d8f72]" style={{ width: `${Math.max(8, item.weighted_average / Math.max(...bars.map(x => x.weighted_average)) * 100)}%` }} /></div></div>) : <p className="mt-5 text-xs text-[#6e625b]">No compatible CPSE price comparison is available.</p>}</div> : <TrendChart series={detail.series} type={tab === 'volume' ? 'volume' : 'trend'} currency={detail.currency} />}{(detail.data_quality.uom_conflict || detail.data_quality.currency_conflict) && <p className="mt-3 rounded-lg bg-amber-50 p-2 text-[10px] text-amber-800">Some history uses incompatible UOM or currency values and is kept out of this combined metric.</p>}</>}
-  </div>;
+  if (loading)
+    return (
+      <div className="min-h-[380px] animate-pulse rounded-xl bg-[#f7f1ea]" />
+    );
+  if (!materials.length)
+    return (
+      <div className="flex min-h-[380px] flex-col items-center justify-center rounded-xl border border-dashed border-[#d8c2ad] bg-[#f7f1ea] p-8 text-center">
+        <Database className="mb-3 h-9 w-9 text-[#8b634e]" />
+        <p className="font-bold text-[#2f261f]">No Price History Available</p>
+        <p className="mt-2 max-w-sm text-xs text-[#6e625b]">
+          Procurement price intelligence becomes available after procurement
+          history with quantity and unit-price data is imported.
+        </p>
+        <a
+          href="/procurement-history"
+          className="mt-4 rounded-lg bg-[#8b634e] px-3 py-2 text-xs font-bold text-white"
+        >
+          Import Procurement History
+        </a>
+      </div>
+    );
+  return (
+    <div className="min-h-[380px]">
+      <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
+        <div>
+          <h3 className="flex items-center gap-2 text-lg font-bold text-[#2f261f]">
+            <BarChart3 className="h-5 w-5 text-[#6c4738]" />
+            Procurement Price Intelligence
+          </h3>
+          <p className="mt-1 text-xs text-[#6e625b]">
+            Historical procurement price movement across harmonized National
+            Materials.
+          </p>
+        </div>
+        <label className="relative">
+          <span className="sr-only">National Material</span>
+          <select
+            value={selected?.national_material_id || ""}
+            onChange={(e) =>
+              setSelected(
+                materials.find(
+                  (x) => x.national_material_id === Number(e.target.value),
+                ),
+              )
+            }
+            className="max-w-[280px] appearance-none rounded-lg border border-[#d9cab7] bg-[#fffdfb] py-2 pl-3 pr-8 text-xs font-semibold text-[#4c413b]"
+          >
+            <option value="">Select National Material</option>
+            {materials.map((item) => (
+              <option
+                key={item.national_material_id}
+                value={item.national_material_id}
+              >
+                {item.national_code} - {item.description}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2 top-2 h-4 w-4 text-[#6e625b]" />
+        </label>
+      </div>
+      {error && <p className="mt-3 text-xs text-rose-700">{error}</p>}
+      {detail && (
+        <>
+          <div className="mt-4 rounded-xl border border-[#eadfce] bg-[#f7f1ea] p-3">
+            <p className="font-mono text-[11px] font-bold text-[#6c4738]">
+              {detail.national_code}
+            </p>
+            <p className="mt-0.5 text-xs font-semibold text-[#2f261f]">
+              {detail.description}
+            </p>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="rounded-xl border border-[#eadfce] p-3">
+              <p className="text-[10px] font-bold uppercase text-[#7a6d63]">
+                Latest Avg. Unit Price
+              </p>
+              <p className="mt-1 text-lg font-black text-[#2f261f]">
+                {money(detail.latest_weighted_avg, detail.currency)}
+              </p>
+              <p className="text-[10px] text-[#6e625b]">
+                / {detail.uom || "-"}
+              </p>
+            </div>
+            <div className="rounded-xl border border-[#eadfce] p-3">
+              <p className="text-[10px] font-bold uppercase text-[#7a6d63]">
+                Historical Change
+              </p>
+              <p
+                className={`mt-1 flex items-center gap-1 text-lg font-black ${changeClass}`}
+              >
+                {indicator}{" "}
+                {detail.change_percent == null
+                  ? "-"
+                  : `${detail.change_percent}%`}
+              </p>
+              <p className="text-[10px] text-[#6e625b]">vs previous period</p>
+            </div>
+            <div className="rounded-xl border border-[#eadfce] p-3">
+              <p className="text-[10px] font-bold uppercase text-[#7a6d63]">
+                Cross-CPSE Price Spread
+              </p>
+              <p className="mt-1 text-lg font-black text-[#2f261f]">
+                {detail.price_spread_percent == null
+                  ? "-"
+                  : `${detail.price_spread_percent}%`}
+              </p>
+              <p className="text-[10px] text-[#6e625b]">
+                {money(detail.minimum_cpse_weighted_price, detail.currency)} -{" "}
+                {money(detail.maximum_cpse_weighted_price, detail.currency)}
+              </p>
+            </div>
+            <div className="rounded-xl border border-[#eadfce] p-3">
+              <p className="text-[10px] font-bold uppercase text-[#7a6d63]">
+                Purchased Quantity
+              </p>
+              <p className="mt-1 text-lg font-black text-[#2f261f]">
+                {detail.total_quantity == null
+                  ? "-"
+                  : detail.total_quantity.toLocaleString()}
+              </p>
+              <p className="text-[10px] text-[#6e625b]">
+                {detail.uom || "-"} · {detail.participating_cpse_count} CPSEs
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {[
+              ["trend", "Price Trend"],
+              ["comparison", "CPSE Comparison"],
+              ["volume", "Procurement Volume"],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                className={`rounded-lg px-3 py-1.5 text-[11px] font-bold ${tab === key ? "bg-[#8b634e] text-white" : "bg-[#f2e8de] text-[#5c4d45]"}`}
+              >
+                {label}
+              </button>
+            ))}
+            <span className="ml-auto flex gap-1">
+              {["3m", "6m", "12m", "all"].map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setRange(item)}
+                  className={`rounded px-2 py-1 text-[10px] font-bold ${range === item ? "bg-[#e3ede0] text-[#4c6b4b]" : "text-[#6e625b]"}`}
+                >
+                  {item.toUpperCase()}
+                </button>
+              ))}
+            </span>
+          </div>
+          {tab === "comparison" ? (
+            <div className="mt-5 space-y-3">
+              {bars.length ? (
+                bars.map((item) => (
+                  <div key={item.cpse_id}>
+                    <div className="mb-1 flex justify-between text-xs">
+                      <span className="font-semibold text-[#4c413b]">
+                        {item.cpse_code}
+                      </span>
+                      <span>
+                        {money(item.weighted_average, detail.currency)}
+                      </span>
+                    </div>
+                    <div className="h-2 rounded bg-[#f0e5d9]">
+                      <div
+                        className="h-2 rounded bg-[#7d8f72]"
+                        style={{
+                          width: `${Math.max(8, (item.weighted_average / Math.max(...bars.map((x) => x.weighted_average))) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="mt-5 text-xs text-[#6e625b]">
+                  No compatible CPSE price comparison is available.
+                </p>
+              )}
+            </div>
+          ) : (
+            <TrendChart
+              series={detail.series}
+              type={tab === "volume" ? "volume" : "trend"}
+              currency={detail.currency}
+            />
+          )}
+          {(detail.data_quality.uom_conflict ||
+            detail.data_quality.currency_conflict) && (
+            <p className="mt-3 rounded-lg bg-amber-50 p-2 text-[10px] text-amber-800">
+              Some history uses incompatible UOM or currency values and is kept
+              out of this combined metric.
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
 }
