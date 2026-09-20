@@ -172,7 +172,10 @@ export const Sidebar = ({ collapsed, onToggle }) => {
   React.useEffect(() => {
     const checkHealth = async () => {
       try {
-        const res = await api.get("/health");
+        // Dashboard statistics require the active API and PostgreSQL connection.
+        // This avoids treating an otherwise healthy authenticated session as
+        // offline when a public health probe is delayed by a hosting proxy.
+        const res = await api.get("/api/dashboard/stats");
         setApiOnline(res.status === 200);
       } catch {
         setApiOnline(false);
