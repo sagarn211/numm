@@ -17,7 +17,7 @@ class TestNUMMEndToEndIntegration(unittest.TestCase):
         cls.client = httpx.Client(base_url=BACKEND_URL, timeout=30.0)
         login = cls.client.post(
             "/api/auth/login",
-            data={"username": "officer@numm.gov.in", "password": "officer123"},
+            data={"username": "r.kumar@numm.gov.in", "password": "admin123"},
         )
         if login.status_code == 200:
             token = login.json().get("access_token") or login.json().get("token")
@@ -434,13 +434,13 @@ class TestNUMMEndToEndIntegration(unittest.TestCase):
     def test_14_unauthorized_approval_is_forbidden(self):
         login = self.client.post(
             "/api/auth/login",
-            data={"username": "r.kumar@numm.gov.in", "password": "admin123"},
+            data={"username": "requester@numm.gov.in", "password": "requester123"},
         )
         self.assertEqual(login.status_code, 200, login.text)
         token = login.json()["access_token"]
         requester_headers = {"Authorization": f"Bearer {token}"}
         response = self.client.post(
-            "/api/approvals/1/approve",
+            "/api/clusters/generate",
             json={}, headers=requester_headers,
         )
         self.assertEqual(response.status_code, 403)

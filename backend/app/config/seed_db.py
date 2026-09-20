@@ -101,6 +101,10 @@ def seed_database():
             db.flush()
             cpse_objs[cdata["code"]] = cpse
 
+        # The CPSE officer fixture exercises CPSE-scoped workflows, so it must
+        # be attached to a CPSE before the database is used by integration tests.
+        user_officer.cpse_id = cpse_objs["ONGC"].id
+
         db.add(User(
             name="Requesting Officer",
             email="requester@numm.gov.in",
