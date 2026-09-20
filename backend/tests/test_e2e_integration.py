@@ -178,24 +178,32 @@ class TestNUMMEndToEndIntegration(unittest.TestCase):
             self.assertIn("status", m)
 
     def test_07_approval_and_national_mapping_flow(self):
-        """Test human approval action, national material creation, and legacy code mapping"""
+        """Approve a persisted identity cluster and create its national mapping."""
         source_a = self.client.get("/api/materials", params={"search": self.material_code_a}).json()[0]
         source_b = self.client.get("/api/materials", params={"search": self.material_code_b}).json()[0]
-        r_app = self.client.get("/api/approvals", params={"status": "PENDING"})
-        self.assertEqual(r_app.status_code, 200)
-        pending = r_app.json()
-        target_match = next(
+        generated = self.client.post("/api/clusters/generate")
+        self.assertEqual(generated.status_code, 200, generated.text)
+        clusters = generated.json()["clusters"]
+        target_cluster = next(
             (
-                match for match in pending
-                if {match["material_a_id"], match["material_b_id"]} == {source_a["id"], source_b["id"]}
+                cluster for cluster in clusters
+                if {member["material_id"] for member in cluster["identity_members"]}
+                == {source_a["id"], source_b["id"]}
             ),
             None,
         )
-        self.assertIsNotNone(target_match, "AI run did not create the expected imported-material candidate")
-        if target_match is not None:
-            match_id = target_match["id"]
+        self.assertIsNotNone(target_cluster, "AI run did not create the expected identity cluster")
+        if target_cluster is not None:
+            cluster_id = target_cluster["id"]
+            if target_cluster["status"] == "PROPOSED":
+                started = self.client.post(f"/api/clusters/{cluster_id}/start-review")
+                self.assertEqual(started.status_code, 200, started.text)
+                submitted = self.client.post(
+                    f"/api/clusters/{cluster_id}/submit",
+                    json={"comment": "E2E integration test submission"},
+                )
+                self.assertEqual(submitted.status_code, 200, submitted.text)
 
-            # Approve the match
             reviewer_login = self.client.post(
                 "/api/auth/login",
                 data={"username": "a.sen@numm.gov.in", "password": "officer123"},
@@ -205,19 +213,15 @@ class TestNUMMEndToEndIntegration(unittest.TestCase):
                 "Authorization": f"Bearer {reviewer_login.json()['access_token']}"
             }
             r_approve = self.client.post(
-                f"/api/approvals/{match_id}/approve",
-                json={
-                    "comment": "E2E Integration Test Officer Approval",
-                    "acknowledge_functional_equivalent": True,
-                },
+                f"/api/clusters/{cluster_id}/approve",
+                json={"comment": "E2E integration test officer approval"},
                 headers=reviewer_headers,
             )
-            self.assertEqual(r_approve.status_code, 200)
+            self.assertEqual(r_approve.status_code, 200, r_approve.text)
             self.assertEqual(r_approve.json()["status"], "APPROVED")
 
-            # The approved pair must now converge on one immutable national code.
             material_codes = []
-            for material_id in (target_match["material_a_id"], target_match["material_b_id"]):
+            for material_id in (source_a["id"], source_b["id"]):
                 material = self.client.get(f"/api/materials/{material_id}")
                 self.assertEqual(material.status_code, 200)
                 self.assertTrue(material.json().get("national_code"))
@@ -225,17 +229,16 @@ class TestNUMMEndToEndIntegration(unittest.TestCase):
             self.assertEqual(material_codes[0], material_codes[1])
 
             audit = self.client.get("/api/audit").json()
-            self.assertTrue(any(log["action"] == "MATCH_APPROVED" and log["entity_id"] == match_id for log in audit))
+            self.assertTrue(any(log["action"] == "CLUSTER_APPROVED" and log["entity_id"] == cluster_id for log in audit))
             dashboard = self.client.get("/api/dashboard/stats").json()
             self.assertGreaterEqual(dashboard["mapped_materials"], 2)
             exported = self.client.get("/api/exports/national-registry.csv")
             self.assertEqual(exported.status_code, 200)
             self.assertIn(material_codes[0], exported.text)
 
-            # Verify it no longer appears in pending
-            r_app_after = self.client.get("/api/approvals", params={"status": "PENDING"})
-            pending_ids = [p["id"] for p in r_app_after.json()]
-            self.assertNotIn(match_id, pending_ids)
+            detail = self.client.get(f"/api/clusters/detail/{cluster_id}")
+            self.assertEqual(detail.status_code, 200, detail.text)
+            self.assertEqual(detail.json()["status"], "APPROVED")
 
     def test_08_national_material_master_registry(self):
         """Test National Material listing, creation, and detail with mappings"""
@@ -274,20 +277,33 @@ class TestNUMMEndToEndIntegration(unittest.TestCase):
             if national["national_code"] == mapped_material["national_code"]
         )
 
-        # Add inventory stock for the material's actual owning CPSE.
-        r_add = self.client.post("/api/inventory", json={
-            "cpse_id": mapped_material["cpse_id"],
-            "material_id": mapped_material["id"],
-            "warehouse": "E2E Testing Central Depot",
+        # Use a material-specific warehouse and reset it when this suite is retried.
+        warehouse = f"E2E Testing Depot {mapped_material['id']}"
+        existing = next(
+            (item for item in self.client.get("/api/inventory", params={"material_id": mapped_material["id"]}).json()
+             if item["warehouse"] == warehouse),
+            None,
+        )
+        stock_payload = {
             "available_quantity": 50,
             "reserved_quantity": 0,
-            "uom": "NOS"
-        })
+            "uom": mapped_material["unit"],
+        }
+        if existing:
+            r_add = self.client.put(f"/api/inventory/{existing['id']}", json=stock_payload)
+        else:
+            r_add = self.client.post("/api/inventory", json={
+                "cpse_id": mapped_material["cpse_id"],
+                "material_id": mapped_material["id"],
+                "warehouse": warehouse,
+                **stock_payload,
+            })
         self.assertEqual(r_add.status_code, 200)
         inv_record = r_add.json()
         self.assertEqual(inv_record["available_quantity"], 50)
         self.__class__.stocked_national_id = mapped_national["id"]
         self.__class__.stocked_cpse_id = mapped_material["cpse_id"]
+        self.__class__.stocked_uom = mapped_material["unit"]
 
         # List inventory
         r_inv_list = self.client.get("/api/inventory")
@@ -314,7 +330,7 @@ class TestNUMMEndToEndIntegration(unittest.TestCase):
         r_item = self.client.post(f"/api/requests/{req_id}/items", json={
             "national_material_id": self.__class__.stocked_national_id,
             "requested_quantity": 5,
-            "uom": "NOS"
+            "uom": self.__class__.stocked_uom,
         })
         self.assertEqual(r_item.status_code, 200)
 
@@ -322,7 +338,7 @@ class TestNUMMEndToEndIntegration(unittest.TestCase):
             "national_material_id": self.__class__.stocked_national_id,
             "requesting_cpse_id": self.__class__.stocked_cpse_id,
             "requested_quantity": 5,
-            "uom": "NOS",
+            "uom": self.__class__.stocked_uom,
         })
         self.assertEqual(reuse.status_code, 200, reuse.text)
         self.assertGreaterEqual(reuse.json()["own_available"], 5)

@@ -18,6 +18,11 @@ from app.models.stock_allocation import StockAllocation
 from app.models.import_error import ImportRowError
 from app.models.import_dead_letter import ImportDeadLetter
 from app.models.demand_record import DemandRecord
+from app.models.material_cluster import MaterialCluster
+from app.models.material_cluster_member import MaterialClusterMember
+from app.models.material_image import MaterialImage
+from app.models.notification import Notification
+from app.models.procurement_record import ProcurementRecord
 from app.utils.security import hash_password
 
 logging.basicConfig(level=logging.INFO)
@@ -32,6 +37,13 @@ def seed_database():
         db.query(RequestItem).delete()
         db.query(MaterialRequest).delete()
         db.query(ApprovalAction).delete()
+        # Delete governance dependants before their evidence and source records.
+        # This keeps reseeding safe after an E2E run creates approved clusters.
+        db.query(MaterialClusterMember).delete()
+        db.query(MaterialCluster).delete()
+        db.query(MaterialImage).delete()
+        db.query(Notification).delete()
+        db.query(ProcurementRecord).delete()
         db.query(MaterialMapping).delete()
         db.query(MaterialMatch).delete()
         db.query(Inventory).delete()
