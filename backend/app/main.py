@@ -1,6 +1,10 @@
 import logging
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+from app.config.database import get_db
 from app.config.settings import settings
 from app.routers import procurement
 from app.routers import clusters
@@ -62,5 +66,10 @@ def root():
     }
 
 @app.get("/health")
-def health():
-    return {"status": "ok"}
+def health(db: Session = Depends(get_db)):
+    """Report ready only when the API can also reach PostgreSQL."""
+    try:
+        db.execute(text("SELECT 1"))
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="Database is unavailable") from exc
+    return {"status": "ok", "database": "ok"}
