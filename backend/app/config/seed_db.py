@@ -369,5 +369,28 @@ def seed_database():
     finally:
         db.close()
 
-if __name__ == "__main__":
+
+def seed_if_empty():
+    """Populate only a brand-new database; never overwrite deployed data."""
+    db = SessionLocal()
+    try:
+        has_existing_data = (
+            db.query(User.id).first() is not None
+            or db.query(CPSE.id).first() is not None
+        )
+    finally:
+        db.close()
+    if has_existing_data:
+        logger.info("Database already contains data; skipping initial demo seed.")
+        return False
     seed_database()
+    return True
+
+
+if __name__ == "__main__":
+    import sys
+
+    if "--if-empty" in sys.argv:
+        seed_if_empty()
+    else:
+        seed_database()
