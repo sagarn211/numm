@@ -73,6 +73,8 @@ def ensure_account_is_approved(user: User) -> None:
         raise HTTPException(403, "Your registration is awaiting administrator approval")
     if user.account_status == "REJECTED":
         raise HTTPException(403, "Your account request was not approved. Contact a system administrator.")
+    if user.account_status != "APPROVED":
+        raise HTTPException(403, "This account is no longer active. Contact a system administrator.")
 
 @router.post("/login")
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):

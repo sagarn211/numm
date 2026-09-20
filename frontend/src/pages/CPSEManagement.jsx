@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Building2, Check, Plus, ShieldCheck, X } from "lucide-react";
+import { Building2, Check, Plus, ShieldCheck, Trash2, X } from "lucide-react";
 import { cpseApi } from "../services/cpseApi";
 import { userApi } from "../services/userApi";
 import { Button } from "../components/common/Button";
@@ -118,6 +118,20 @@ export const CPSEManagement = () => {
       await userApi.reject(user.id);
       setError("");
       setSuccess(`${user.name}'s account request was rejected.`);
+      await load();
+    } catch (requestError) {
+      setError(requestError?.response?.data?.detail || requestError.message);
+    }
+  };
+
+  const deleteUser = async (user) => {
+    if (!window.confirm(`Delete ${user.name}'s account? They will immediately lose access.`)) {
+      return;
+    }
+    try {
+      await userApi.delete(user.id);
+      setError("");
+      setSuccess(`${user.name}'s account was deleted.`);
       await load();
     } catch (requestError) {
       setError(requestError?.response?.data?.detail || requestError.message);
@@ -357,9 +371,19 @@ export const CPSEManagement = () => {
                     </select>
                   </td>
                   <td className="p-3 text-right">
-                    <Button size="sm" onClick={() => saveUser(user)}>
-                      Save Access
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button size="sm" onClick={() => saveUser(user)}>
+                        Save Access
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        icon={Trash2}
+                        onClick={() => deleteUser(user)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}

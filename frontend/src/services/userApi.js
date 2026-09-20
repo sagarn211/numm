@@ -15,4 +15,5 @@ export const userApi = {
     }),
   reject: (id, comment = "") =>
     api.post(`/api/users/${id}/reject`, { comment }),
+  delete: (id) => api.delete(`/api/users/${id}`),
 };

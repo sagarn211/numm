@@ -94,6 +94,44 @@ def update_role(
     return user_data(user)
 
 
+@router.delete("/{user_id}")
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("user.manage")),
+):
+    """Deactivate an account while retaining the immutable audit history."""
+    if canonical_role(current_user.role) != SYSTEM_ADMIN:
+        raise HTTPException(403, "Only a system administrator can delete user accounts")
+    if user_id == current_user.id:
+        raise HTTPException(400, "You cannot delete your own account")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(404, "User not found")
+    if canonical_role(user.role) == SYSTEM_ADMIN:
+        admin_count = db.query(User).filter(
+            User.role.in_(["ADMIN", SYSTEM_ADMIN]),
+            User.account_status == "APPROVED",
+        ).count()
+        if admin_count <= 1:
+            raise HTTPException(400, "The final system administrator cannot be deleted")
+
+    user.account_status = "DELETED"
+    user.reviewed_by = current_user.id
+    user.reviewed_at = datetime.utcnow()
+    user.review_comment = "Account deleted by system administrator"
+    db.commit()
+    write_audit(
+        db,
+        "USER_ACCOUNT_DELETED",
+        "User",
+        user.id,
+        current_user.id,
+        {"deleted_user_email": user.email},
+    )
+    return {"message": "User account deleted"}
+
+
 def _validate_approval_assignment(db: Session, role: str, cpse_id: int | None) -> None:
     if role in {CPSE_DATA_MANAGER, REQUESTING_OFFICER, "PROCUREMENT_OFFICER", "CPSE_OFFICER"}:
         if cpse_id is None:
