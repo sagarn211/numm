@@ -10,6 +10,7 @@ import app.models
 
 from app.middleware.error_middleware import error_middleware
 from app.middleware.logging_middleware import logging_middleware
+from app.middleware.rate_limit_middleware import LoginRateLimiter
 from app.routers import (
     auth, cpses, materials, imports, matching, approvals, national_materials,
     inventory, requests, audit, dashboard, integrations, data_quality, demand, exports, users, notifications
@@ -38,6 +39,7 @@ app.add_middleware(
 )
 
 app.middleware("http")(logging_middleware)
+app.middleware("http")(LoginRateLimiter())
 app.middleware("http")(error_middleware)
 
 for router in [
