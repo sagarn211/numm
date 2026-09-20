@@ -1,7 +1,5 @@
 # NUMM Project Workflow
 
-The complete product, business, and engineering workflow is documented in [docs/PROJECT_WORKFLOW.md](docs/PROJECT_WORKFLOW.md). This README keeps only the requirements and setup instructions for getting the project running.
-
 ## Prerequisites
 
 Recommended: Docker Desktop with Compose v2 and Git. For local component development, install Python 3.12+, Node.js 20+, PostgreSQL 16+, and Redis 7+.
